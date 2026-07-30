@@ -3,11 +3,14 @@ const cors = require('cors');
 require('dotenv').config();
 const pool = require('./config/db');
 const authRoutes = require('./routes/auth');
+const cron = require('node-cron');
+const { fetchTrafficData } = require('./controllers/trafficController');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/traffic-data', require('./routes/traffic'));
 
 app.get('/', (req, res) => {
   res.send('TrafficVision AI backend is running');
@@ -24,3 +27,17 @@ app.get('/test-db', async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Run every 15 minutes
+cron.schedule('*/15 * * * *', async () => {
+  console.log('Running scheduled traffic data fetch...');
+  try {
+    // Reuse the same logic, but without req/res since this isn't an HTTP request
+    const fakeReq = {};
+    const fakeRes = {
+      status: () => ({ json: (data) => console.log('Cron result:', data.message) }),
+    };
+    await fetchTrafficData(fakeReq, fakeRes);
+  } catch (err) {
+    console.error('Cron job error:', err.message);
+  }
+});
