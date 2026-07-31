@@ -13,6 +13,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/traffic-data', require('./routes/traffic'));
 app.use('/api/predictions', predictionRoutes);
+const routeRoutes = require('./routes/routeRoutes');
+app.use('/api/routes', routeRoutes);
 
 app.get('/', (req, res) => {
   res.send('TrafficVision AI backend is running');
