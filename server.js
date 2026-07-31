@@ -15,6 +15,8 @@ app.use('/api/traffic-data', require('./routes/traffic'));
 app.use('/api/predictions', predictionRoutes);
 const routeRoutes = require('./routes/routeRoutes');
 app.use('/api/routes', routeRoutes);
+const alertRoutes = require('./routes/alertRoutes');
+app.use('/api/alerts', alertRoutes);
 
 app.get('/', (req, res) => {
   res.send('TrafficVision AI backend is running');

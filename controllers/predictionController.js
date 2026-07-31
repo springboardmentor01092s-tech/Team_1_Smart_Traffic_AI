@@ -54,6 +54,26 @@ const generatePrediction = async (req, res) => {
       ]
     );
 
+    const newPrediction = insertResult.rows[0];
+
+// Trigger an alert if predicted congestion is high or severe
+if (newPrediction.predicted_congestion === 'high' || newPrediction.predicted_congestion === 'severe') {
+  const severityMap = { high: 'warning', severe: 'critical' };
+
+  await pool.query(
+    `INSERT INTO alerts
+      (alert_id, location_id, prediction_id, severity, message, status, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+    [
+      uuidv4(),
+      newPrediction.location_id,
+      newPrediction.prediction_id,
+      severityMap[newPrediction.predicted_congestion],
+      `${newPrediction.predicted_congestion === 'severe' ? 'Severe' : 'High'} congestion predicted at location ${newPrediction.location_id}`,
+      'active'
+    ]
+  );
+}
     res.status(201).json({
       message: 'Prediction generated successfully',
       basedOnAvgSpeed: avgSpeed.toFixed(2),
