@@ -15,7 +15,7 @@ const generatePrediction = async (req, res) => {
   try {
     // Step 1: Fetch last 5 readings for this location
     const recentData = await pool.query(
-      `SELECT vehicle_count, average_speed_kmph, congestion_level
+      `SELECT average_speed_kmph, congestion_level
        FROM traffic_data
        WHERE location_id = $1
        ORDER BY recorded_at DESC
@@ -31,8 +31,6 @@ const generatePrediction = async (req, res) => {
     const rows = recentData.rows;
     const avgSpeed =
       rows.reduce((sum, r) => sum + parseFloat(r.average_speed_kmph), 0) / rows.length;
-    const avgVehicleCount =
-  rows.reduce((sum, r) => sum + (parseInt(r.vehicle_count) || 0), 0) / rows.length;
 
     // Step 3: Derive predicted congestion level from the rule
     const predictedCongestion = deriveCongestionLevel(avgSpeed);
@@ -59,7 +57,6 @@ const generatePrediction = async (req, res) => {
     res.status(201).json({
       message: 'Prediction generated successfully',
       basedOnAvgSpeed: avgSpeed.toFixed(2),
-      basedOnAvgVehicleCount: avgVehicleCount.toFixed(2),
       prediction: insertResult.rows[0]
     });
 
