@@ -6,17 +6,20 @@ const authRoutes = require('./routes/auth');
 const cron = require('node-cron');
 const { fetchTrafficData } = require('./controllers/trafficController');
 const predictionRoutes = require('./routes/predictionRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const routeRoutes = require('./routes/routeRoutes');
 
-const app = express();
+const app = express();          // must come first
+
 app.use(cors());
 app.use(express.json());
+
 app.use('/api/auth', authRoutes);
-app.use('/api/traffic-data', require('./routes/traffic'));
 app.use('/api/predictions', predictionRoutes);
-const routeRoutes = require('./routes/routeRoutes');
-app.use('/api/routes', routeRoutes);
-const alertRoutes = require('./routes/alertRoutes');
 app.use('/api/alerts', alertRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/routes', routeRoutes);
 
 app.get('/', (req, res) => {
   res.send('TrafficVision AI backend is running');
