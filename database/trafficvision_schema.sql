@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. USERS
 -- Handles authentication and role-based access
 -- =========================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(100) NOT NULL,
     email           VARCHAR(150) UNIQUE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE users (
 -- 2. LOCATIONS
 -- Physical monitoring points (intersections, road segments)
 -- =========================================================
-CREATE TABLE locations (
+CREATE TABLE IF NOT EXISTS locations (
     location_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(150) NOT NULL,
     latitude        DECIMAL(9,6) NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE locations (
 -- 3. TRAFFIC_DATA
 -- Raw sensor/traffic readings over time
 -- =========================================================
-CREATE TABLE traffic_data (
+CREATE TABLE IF NOT EXISTS traffic_data (
     data_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     location_id         UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
     recorded_at         TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -48,13 +48,13 @@ CREATE TABLE traffic_data (
 );
 
 -- Index for fast time-based queries per location
-CREATE INDEX idx_traffic_data_location_time ON traffic_data(location_id, recorded_at);
+CREATE INDEX IF NOT EXISTS idx_traffic_data_location_time ON traffic_data(location_id, recorded_at);
 
 -- =========================================================
 -- 4. PREDICTIONS
 -- AI-generated forecasts based on traffic_data
 -- =========================================================
-CREATE TABLE predictions (
+CREATE TABLE IF NOT EXISTS predictions (
     prediction_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     location_id           UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
     predicted_for         TIMESTAMP NOT NULL,   -- the future time this prediction targets
@@ -64,13 +64,13 @@ CREATE TABLE predictions (
     created_at            TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_predictions_location_time ON predictions(location_id, predicted_for);
+CREATE INDEX IF NOT EXISTS idx_predictions_location_time ON predictions(location_id, predicted_for);
 
 -- =========================================================
 -- 5. ROUTES
 -- A named path made up of multiple locations
 -- =========================================================
-CREATE TABLE routes (
+CREATE TABLE IF NOT EXISTS routes (
     route_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(150) NOT NULL,
     created_by      UUID REFERENCES users(user_id),
@@ -79,7 +79,7 @@ CREATE TABLE routes (
 
 -- Junction table: many-to-many between routes and locations,
 -- with sequence_order to preserve the path order
-CREATE TABLE route_locations (
+CREATE TABLE IF NOT EXISTS route_locations (
     route_id        UUID NOT NULL REFERENCES routes(route_id) ON DELETE CASCADE,
     location_id     UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
     sequence_order  INTEGER NOT NULL,
@@ -90,7 +90,7 @@ CREATE TABLE route_locations (
 -- 6. ALERTS
 -- Congestion warnings, tied to a location and optionally a prediction
 -- =========================================================
-CREATE TABLE alerts (
+CREATE TABLE IF NOT EXISTS alerts (
     alert_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     location_id     UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
     prediction_id   UUID REFERENCES predictions(prediction_id) ON DELETE SET NULL,
@@ -102,7 +102,7 @@ CREATE TABLE alerts (
     resolved_at     TIMESTAMP
 );
 
-CREATE INDEX idx_alerts_status ON alerts(status);
+CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
 
 -- =========================================================
 -- End of schema

@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const pool = require('./config/db');
 const authRoutes = require('./routes/auth');
+const trafficRoutes = require('./routes/traffic');
 const cron = require('node-cron');
 const { fetchTrafficData } = require('./controllers/trafficController');
 const predictionRoutes = require('./routes/predictionRoutes');
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/traffic', trafficRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/analytics', analyticsRoutes);
