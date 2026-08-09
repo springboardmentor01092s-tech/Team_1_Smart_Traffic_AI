@@ -105,5 +105,22 @@ CREATE TABLE IF NOT EXISTS alerts (
 CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
 
 -- =========================================================
+-- 7. REPORTS
+-- Generated traffic prediction report summaries and artifacts
+-- =========================================================
+CREATE TABLE IF NOT EXISTS reports (
+    report_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_title    VARCHAR(255) NOT NULL DEFAULT 'Traffic Prediction Report',
+    generated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    summary_json    JSONB NOT NULL,
+    pdf_filename    VARCHAR(255),
+    status          VARCHAR(50) DEFAULT 'completed',
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at DESC);
+
+-- =========================================================
 -- End of schema
 -- =========================================================
+

@@ -131,6 +131,37 @@ async function runTests() {
     console.log(`     Network Status Breakdown: ${JSON.stringify(res.data)}`);
   });
 
+  // 14. Reports: Latest Traffic Prediction Report
+  let pdfFileToTest = null;
+  await testEndpoint('GET /api/reports/traffic-prediction (Latest report JSON)', async () => {
+    const res = await axios.get(`${BASE_URL}/api/reports/traffic-prediction`);
+    if (res.status !== 200 || !res.data.summary) throw new Error('Failed latest report fetch');
+    pdfFileToTest = res.data.pdf_filename;
+    console.log(`     Report Title: ${res.data.report_title}, PDF File: ${pdfFileToTest}`);
+  });
+
+  // 15. Reports: Report History
+  await testEndpoint('GET /api/reports/traffic-prediction/history?limit=5 (Report history)', async () => {
+    const res = await axios.get(`${BASE_URL}/api/reports/traffic-prediction/history?limit=5`);
+    if (res.status !== 200 || !Array.isArray(res.data.reports)) throw new Error('Failed report history');
+    console.log(`     Reports in History: ${res.data.reports.length}`);
+  });
+
+  // 16. Reports: PDF Download
+  await testEndpoint('GET /api/reports/traffic-prediction/pdf/:filename (PDF report download)', async () => {
+    if (!pdfFileToTest) throw new Error('No PDF filename available for download test');
+    const res = await axios.get(`${BASE_URL}/api/reports/traffic-prediction/pdf/${pdfFileToTest}`);
+    if (res.status !== 200 || res.headers['content-type'] !== 'application/pdf') throw new Error('Failed PDF download');
+    console.log(`     Downloaded PDF ${pdfFileToTest} successfully`);
+  });
+
+  // 17. Reports: Generate Report On Demand
+  await testEndpoint('POST /api/reports/traffic-prediction/generate (On-demand report generation)', async () => {
+    const res = await axios.post(`${BASE_URL}/api/reports/traffic-prediction/generate`);
+    if (res.status !== 201) throw new Error('Failed on-demand report generation');
+    console.log(`     Generated New Report: ${res.data.message}`);
+  });
+
   console.log(`========================================`);
   console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
   console.log(`========================================`);
