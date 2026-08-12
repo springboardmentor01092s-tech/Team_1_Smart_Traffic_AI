@@ -96,6 +96,16 @@ async function runTests() {
     console.log(`     Route Score: ${res.data.congestionScore} (Level: ${res.data.level})`);
   });
 
+  // 8b. Route Travel Time Estimation
+  await testEndpoint(`GET /api/routes/${sampleRouteId}/travel-time (Route Travel Time Estimation)`, async () => {
+    const res = await axios.get(`${BASE_URL}/api/routes/${sampleRouteId}/travel-time`);
+    if (res.status !== 200) throw new Error('Failed route travel time estimation');
+    if (!res.data.totalDistanceKm || !res.data.estimatedTravelTimeMinutes || !res.data.segments) {
+      throw new Error('Invalid travel time estimation response format');
+    }
+    console.log(`     Total Distance: ${res.data.totalDistanceKm} km, Travel Time: ${res.data.estimatedTravelTimeMinutes} mins`);
+  });
+
   // 9. Get All Alerts
   await testEndpoint('GET /api/alerts (All system alerts)', async () => {
     const res = await axios.get(`${BASE_URL}/api/alerts`);

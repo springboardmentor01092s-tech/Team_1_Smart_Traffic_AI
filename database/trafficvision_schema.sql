@@ -43,9 +43,15 @@ CREATE TABLE IF NOT EXISTS traffic_data (
     recorded_at         TIMESTAMP NOT NULL DEFAULT NOW(),
     vehicle_count       INTEGER,
     average_speed_kmph  DECIMAL(5,2),
+    current_speed       DECIMAL(5,2),
+    free_flow_speed     DECIMAL(5,2),
     congestion_level    VARCHAR(20) CHECK (congestion_level IN ('low', 'moderate', 'high', 'severe')),
     source              VARCHAR(50)        -- e.g. sensor, camera, manual entry
 );
+
+-- Ensure speed columns exist on existing table instances
+ALTER TABLE traffic_data ADD COLUMN IF NOT EXISTS current_speed DECIMAL(5,2);
+ALTER TABLE traffic_data ADD COLUMN IF NOT EXISTS free_flow_speed DECIMAL(5,2);
 
 -- Index for fast time-based queries per location
 CREATE INDEX IF NOT EXISTS idx_traffic_data_location_time ON traffic_data(location_id, recorded_at);
