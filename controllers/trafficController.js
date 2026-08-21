@@ -31,13 +31,15 @@ const fetchTrafficData = async (req, res) => {
           flowData.freeFlowSpeed
         );
 
+        const vehicleCount = flowData.vehicleCount ?? null;
+
         const insertResult = await pool.query(
-  `INSERT INTO traffic_data 
-   (location_id, recorded_at, average_speed_kmph, congestion_level, source)
-   VALUES ($1, NOW(), $2, $3, $4)
-   RETURNING *`,
-  [loc.location_id, flowData.currentSpeed, congestionLevel, 'TomTom']
-);
+          `INSERT INTO traffic_data 
+           (location_id, recorded_at, vehicle_count, average_speed_kmph, congestion_level, source)
+           VALUES ($1, NOW(), $2, $3, $4, $5)
+           RETURNING *`,
+          [loc.location_id, vehicleCount, flowData.currentSpeed, congestionLevel, 'TomTom']
+        );
 
         insertedData.push(insertResult.rows[0]);
       } catch (locError) {
