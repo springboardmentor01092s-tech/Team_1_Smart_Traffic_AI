@@ -17,7 +17,10 @@ const fs = require('fs');
 
 const app = express();          // must come first
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
@@ -53,6 +56,7 @@ cron.schedule('*/15 * * * *', async () => {
       status: () => ({ json: (data) => console.log('Cron fetch result:', data.message) }),
     };
     await fetchTrafficData(fakeReq, fakeRes);
+    // ... rest of your cron logic
 
     // Trigger python report generator script
     const venvWin = path.join(__dirname, '.venv/Scripts/python.exe');
@@ -70,4 +74,4 @@ cron.schedule('*/15 * * * *', async () => {
   } catch (err) {
     console.error('Cron job error:', err.message);
   }
-});
+});

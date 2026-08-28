@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     prediction_id   UUID REFERENCES predictions(prediction_id) ON DELETE SET NULL,
     severity        VARCHAR(20) CHECK (severity IN ('info', 'warning', 'critical')),
     message         TEXT NOT NULL,
-    status          VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'dismissed')),
+    status          VARCHAR(20) NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Notified', 'Acknowledged', 'Resolved')),
     created_by      UUID REFERENCES users(user_id),
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     resolved_at     TIMESTAMP
