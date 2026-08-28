@@ -1,3 +1,14 @@
+const axios = require('axios');
+const pool = require('../config/db'); // adjust path to wherever your db connection file actually is
+function getCongestionLevel(currentSpeed, freeFlowSpeed) {
+  if (!freeFlowSpeed || freeFlowSpeed === 0) return 'unknown';
+  const ratio = currentSpeed / freeFlowSpeed;
+
+  if (ratio >= 0.8) return 'low';
+  if (ratio >= 0.5) return 'moderate';
+  if (ratio >= 0.3) return 'high';
+  return 'severe';
+}
 const fetchTrafficDataCore = async () => {
   const locationsResult = await pool.query(
     'SELECT location_id, latitude, longitude FROM locations'
