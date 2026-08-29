@@ -124,3 +124,39 @@ src/
     ├── AlertsPanel.test.jsx
     └── AnalyticsDashboard.test.jsx
 ```
+
+---
+
+## 🔥 Heat Map Intensity Calculation & Refresh Configuration
+
+### 1. Heat Map Intensity Calculation Formula
+The dynamic heat map layer (`CongestionHeatMap.jsx`) plots live traffic monitored locations using Leaflet.heat (`L.heatLayer`). Each point's intensity weight (0.0 to 1.0) is dynamically computed from live traffic parameters:
+
+$$\text{speedRatio} = \text{clamp}\left(\frac{\text{current\_speed}}{\text{free\_flow\_speed}}, 0.05, 1.0\right)$$
+
+$$\text{rawCongestion} = 1.0 - \text{speedRatio}$$
+
+$$\text{volumeWeight} = \min\left(1.0, \frac{\text{vehicle\_count}}{200}\right)$$
+
+$$\text{Intensity} = \min\left(1.0, \max\left(0.12, \text{rawCongestion} \times 0.75 + \text{volumeWeight} \times 0.25\right)\right)$$
+
+- **Categorical Signal Colors**:
+  - 🟢 **Low** ($\text{Intensity} < 0.35$): Green (`#10b981`)
+  - 🟡 **Moderate** ($0.35 \le \text{Intensity} < 0.60$): Yellow (`#f59e0b`)
+  - 🟠 **High** ($0.60 \le \text{Intensity} < 0.80$): Orange (`#f97316`)
+  - 🔴 **Severe** ($\text{Intensity} \ge 0.80$): Red (`#ef4444`)
+
+- **Smooth Intensity Animation**:
+  When new polled data arrives every 15–30 seconds, intensity transitions smoothly over an 800ms duration via `requestAnimationFrame` interpolation rather than abruptly snapping.
+
+### 3. System Architectural Specifications & Assumptions
+- **Speed & Congestion Threshold Definitions**:
+  - High / Severe Congestion Bottlenecks: `speed_ratio < 0.5` (or current speed `< 30 km/h` when free-flow is 60 km/h). Standard across `trafficController.js` (`getCongestionLevel`), `predictionController.js`, and `routeController.js`.
+  - Sub-optimal Speed Performance Flag: `speed_ratio < 0.6` in `SpeedPanel.jsx` (operational warning flag for sub-optimal speed flow).
+- **Dashboard Travel Time Scope (`avg_travel_time_mins`)**:
+  - Computed across ALL monitored locations with recorded traffic data (normalized over a standard 2.5 km corridor segment length).
+- **Data Refresh Architecture**:
+  - Server-side TomTom API sync: Executes every 15 minutes via `node-cron` (`*/15 * * * *`).
+  - Frontend Heatmap Polling: Internal `/api/traffic` endpoint polled every 15s–30s (no external API calls triggered client-side).
+
+

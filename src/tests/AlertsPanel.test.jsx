@@ -13,7 +13,7 @@ describe('AlertsPanel Component Tests', () => {
       location_id: '11111111-1111-1111-1111-111111111111',
       severity: 'critical',
       message: 'Severe bottleneck gridlock detected on Expressway',
-      status: 'active',
+      status: 'Active',
       created_at: '2026-08-22T10:00:00.000Z'
     },
     {
@@ -21,7 +21,7 @@ describe('AlertsPanel Component Tests', () => {
       location_id: '22222222-2222-2222-2222-222222222222',
       severity: 'warning',
       message: 'Moderate slow down near Downtown',
-      status: 'active',
+      status: 'Notified',
       created_at: '2026-08-22T09:30:00.000Z'
     }
   ];
@@ -30,7 +30,7 @@ describe('AlertsPanel Component Tests', () => {
     vi.clearAllMocks();
   });
 
-  it('renders loading state initially and then displays alerts sorted by severity', async () => {
+  it('renders loading state initially and then displays alerts sorted by severity with status badges', async () => {
     alertApi.getAllAlerts.mockResolvedValue(sampleAlerts);
 
     render(<AlertsPanel />);
@@ -43,6 +43,8 @@ describe('AlertsPanel Component Tests', () => {
 
     expect(screen.getByText('critical')).toBeInTheDocument();
     expect(screen.getByText('warning')).toBeInTheDocument();
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Notified').length).toBeGreaterThan(0);
   });
 
   it('renders empty fallback message when no alerts are returned', async () => {
@@ -69,5 +71,24 @@ describe('AlertsPanel Component Tests', () => {
 
     expect(screen.queryByText(/Severe bottleneck gridlock detected on Expressway/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Moderate slow down near Downtown/i)).toBeInTheDocument();
+  });
+
+  it('triggers updateAlertStatus when action buttons are clicked', async () => {
+    alertApi.getAllAlerts.mockResolvedValue(sampleAlerts);
+    alertApi.updateAlertStatus.mockResolvedValue({
+      ...sampleAlerts[0],
+      status: 'Notified'
+    });
+
+    render(<AlertsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Severe bottleneck gridlock detected on Expressway/i)).toBeInTheDocument();
+    });
+
+    const notifyBtn = screen.getByRole('button', { name: /Mark Notified/i });
+    fireEvent.click(notifyBtn);
+
+    expect(alertApi.updateAlertStatus).toHaveBeenCalledWith('alert-1', 'Notified');
   });
 });

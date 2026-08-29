@@ -11,8 +11,9 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
 
   const navItems = [
     { id: 'map', label: '🗺️ Live Map & Density', icon: '🗺️' },
+    { id: 'analytics-heat', label: '🔥 Heat Map & Analytics', icon: '🔥' },
     { id: 'alerts', label: '🚨 Unusual Disruptions', icon: '🚨' },
-    { id: 'analytics', label: '📊 Analytics Dashboard', icon: '📊' },
+    { id: 'analytics', label: '📊 Trends Analytics', icon: '📊' },
     { id: 'routes', label: '🛣️ Route Inspector', icon: '🛣️' }
   ];
 

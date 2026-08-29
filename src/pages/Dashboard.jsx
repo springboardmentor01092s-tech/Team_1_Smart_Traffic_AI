@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import MapView from '../components/MapView';
 import AlertsPanel from '../components/AlertsPanel';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import AnalyticsHeatDashboard from '../components/AnalyticsHeatDashboard';
 import RouteInspector from '../components/RouteInspector';
 import { getLatestTrafficData, triggerTrafficFetch } from '../api/trafficApi';
 import { getDashboardSummary } from '../api/analyticsApi';
@@ -132,6 +133,12 @@ const Dashboard = () => {
         {activeTab === 'alerts' && (
           <div>
             <AlertsPanel />
+          </div>
+        )}
+
+        {activeTab === 'analytics-heat' && (
+          <div>
+            <AnalyticsHeatDashboard />
           </div>
         )}
 
