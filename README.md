@@ -19,6 +19,21 @@ This project delivers:
 
 ---
 
+## 📊 System Architectural Specifications & Assumptions
+
+### 1. Speed & Congestion Threshold Definitions
+- **Congestion Bottlenecks (High / Severe)**: Defined by speed ratio `current_speed / free_flow_speed < 0.5` (or absolute speed `< 30 km/h`). Used across `trafficController.js` (`getCongestionLevel`), `predictionController.js`, and `routeController.js`.
+- **Sub-optimal Speed Performance Flag**: Defined by speed ratio `< 0.6` in `SpeedPanel.jsx`. Flags locations operating below 60% of design free-flow speed for early operational bottleneck warnings.
+
+### 2. Dashboard Travel Time Scope (`avg_travel_time_mins`)
+- `avg_travel_time_mins` in `getDashboardSummary` (`analyticsController.js`) is calculated across **ALL monitored locations with recorded traffic data** using their latest observed speed normalized over a standard 2.5 km corridor segment length.
+
+### 3. Server Sync & Polling Architecture
+- **Server Refresh**: External TomTom API fetching occurs strictly server-side every **15 minutes** via a `node-cron` job (`*/15 * * * *`) in `server.js`.
+- **Frontend Heatmap Polling**: `CongestionHeatMap.jsx` polls the internal `/api/traffic` endpoint on a user-selectable **15s – 30s** timer to reflect DB updates smoothly without invoking duplicate external API requests.
+
+---
+
 ## 🚀 Quick Start Guide
 
 ### 1. Start the Backend API Server

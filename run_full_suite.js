@@ -23,9 +23,23 @@ async function runFullSuite() {
   tester.stderr.on('data', (d) => process.stderr.write(d));
 
   tester.on('close', (code) => {
-    server.kill();
-    console.log(`\nFull suite test process exited with code ${code}`);
-    process.exit(code);
+    if (code !== 0) {
+      server.kill();
+      console.log(`\ntest_all_endpoints.js failed with code ${code}`);
+      process.exit(code);
+    }
+
+    console.log('Running test_analytics_heatmap.js against http://localhost:5001...');
+    const heatmapTester = spawn('node', ['test_analytics_heatmap.js'], { cwd: __dirname, env: testEnv });
+
+    heatmapTester.stdout.on('data', (d) => process.stdout.write(d));
+    heatmapTester.stderr.on('data', (d) => process.stderr.write(d));
+
+    heatmapTester.on('close', (heatmapCode) => {
+      server.kill();
+      console.log(`\nFull suite test process exited with code ${heatmapCode}`);
+      process.exit(heatmapCode);
+    });
   });
 }
 

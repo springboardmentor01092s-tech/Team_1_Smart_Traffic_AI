@@ -44,7 +44,6 @@ const fetchTrafficDataCore = async () => {
   return { insertedData, failedLocations };
 };
 
-// Route handler wraps the core logic
 const fetchTrafficData = async (req, res) => {
   try {
     const { insertedData, failedLocations } = await fetchTrafficDataCore();
@@ -55,4 +54,78 @@ const fetchTrafficData = async (req, res) => {
   }
 };
 
-module.exports = { fetchTrafficData, fetchTrafficDataCore };
+const getLiveTraffic = async (req, res) => {
+  try {
+    const { timeframe = 'live' } = req.query;
+
+    if (timeframe === '1h' || timeframe === '24h') {
+      const intervalStr = timeframe === '1h' ? "INTERVAL '1 hour'" : "INTERVAL '24 hours'";
+      const result = await pool.query(`
+        SELECT 
+          td.data_id,
+          td.location_id,
+          td.recorded_at,
+          td.vehicle_count,
+          td.average_speed_kmph,
+          COALESCE(td.current_speed, td.average_speed_kmph, 30) AS current_speed,
+          COALESCE(td.free_flow_speed, 60) AS free_flow_speed,
+          td.congestion_level,
+          l.name AS location_name,
+          l.latitude,
+          l.longitude,
+          l.road_type
+        FROM traffic_data td
+        JOIN locations l ON td.location_id = l.location_id
+        WHERE td.recorded_at >= NOW() - ${intervalStr}
+        ORDER BY td.recorded_at DESC;
+      `);
+      return res.json(result.rows);
+    }
+
+    // Default 'live': Latest recorded reading for each location
+    const result = await pool.query(`
+      SELECT DISTINCT ON (td.location_id)
+        td.data_id,
+        td.location_id,
+        td.recorded_at,
+        td.vehicle_count,
+        td.average_speed_kmph,
+        COALESCE(td.current_speed, td.average_speed_kmph, 30) AS current_speed,
+        COALESCE(td.free_flow_speed, 60) AS free_flow_speed,
+        td.congestion_level,
+        l.name AS location_name,
+        l.latitude,
+        l.longitude,
+        l.road_type
+      FROM traffic_data td
+      JOIN locations l ON td.location_id = l.location_id
+      ORDER BY td.location_id, td.recorded_at DESC;
+    `);
+
+    if (result.rows.length === 0) {
+      const locResult = await pool.query(`
+        SELECT 
+          location_id,
+          name AS location_name,
+          latitude,
+          longitude,
+          road_type,
+          45 AS vehicle_count,
+          35.0 AS current_speed,
+          50.0 AS free_flow_speed,
+          35.0 AS average_speed_kmph,
+          'moderate' AS congestion_level,
+          NOW() AS recorded_at
+        FROM locations;
+      `);
+      return res.json(locResult.rows);
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching live traffic:', err.message);
+    res.status(500).json({ error: 'Failed to fetch live traffic data' });
+  }
+};
+
+module.exports = { fetchTrafficData, fetchTrafficDataCore, getLiveTraffic };

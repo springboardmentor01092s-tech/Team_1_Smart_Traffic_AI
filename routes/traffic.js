@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { fetchTrafficData } = require('../controllers/trafficController');
+const { fetchTrafficData, getLiveTraffic } = require('../controllers/trafficController');
 
+router.get('/', getLiveTraffic);
 router.get('/fetch', fetchTrafficData);
 
-module.exports = router;
+module.exports = router;
