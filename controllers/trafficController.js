@@ -38,12 +38,34 @@ const fetchTrafficData = async (req, res) => {
    RETURNING *`,
   [loc.location_id, flowData.currentSpeed, congestionLevel, 'TomTom']
 );
+// Create an alert for congestion
+const alertSeverity =
+    congestionLevel === 'severe' ? 'critical' :
+    congestionLevel === 'high' ? 'critical' :
+    congestionLevel === 'moderate' ? 'warning' :
+    'info';
 
+await pool.query(
+    `INSERT INTO alerts
+     (location_id, severity, message, status)
+     VALUES ($1, $2, $3, 'active')`,
+    [
+    loc.location_id,
+    alertSeverity,
+    `Traffic congestion detected: ${congestionLevel}`
+]
+);
         insertedData.push(insertResult.rows[0]);
       } catch (locError) {
-        console.error(`Failed for location ${loc.location_id}:`, locError.message);
-        failedLocations.push({ location_id: loc.location_id, error: locError.message });
-      }
+   console.log("TOMTOM ERROR STATUS:", locError.response?.status);
+console.log("TOMTOM ERROR DATA:", JSON.stringify(locError.response?.data));
+console.log("TOMTOM ERROR MESSAGE:", locError.message);
+
+    failedLocations.push({
+        location_id: loc.location_id,
+        error: locError.response?.data || locError.message
+    });
+}
     }
 
     res.status(200).json({

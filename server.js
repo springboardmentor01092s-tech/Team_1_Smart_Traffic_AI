@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const pool = require('./config/db');
+const alertRoutes = require('./routes/alertRoutes');
 const authRoutes = require('./routes/auth');
 const cron = require('node-cron');
 const { fetchTrafficData } = require('./controllers/trafficController');
@@ -15,7 +16,7 @@ app.use('/api/traffic-data', require('./routes/traffic'));
 app.use('/api/predictions', predictionRoutes);
 const routeRoutes = require('./routes/routeRoutes');
 app.use('/api/routes', routeRoutes);
-
+app.use('/api/alerts', alertRoutes);
 app.get('/', (req, res) => {
   res.send('TrafficVision AI backend is running');
 });
