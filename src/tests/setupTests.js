@@ -1,5 +1,17 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import L from 'leaflet';
+
+// Define Leaflet L globally for plugins like leaflet.heat in jsdom
+global.L = L;
+window.L = L;
+if (!L.heatLayer) {
+  L.heatLayer = vi.fn().mockReturnValue({
+    addTo: vi.fn().mockReturnThis(),
+    setLatLngs: vi.fn(),
+    remove: vi.fn()
+  });
+}
 
 // Mock Leaflet and Canvas for jsdom test runner
 global.ResizeObserver = class ResizeObserver {
@@ -22,3 +34,4 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
