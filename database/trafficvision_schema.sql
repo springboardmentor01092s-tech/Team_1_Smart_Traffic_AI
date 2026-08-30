@@ -119,12 +119,34 @@ CREATE TABLE IF NOT EXISTS reports (
     report_title    VARCHAR(255) NOT NULL DEFAULT 'Traffic Prediction Report',
     generated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
     summary_json    JSONB NOT NULL,
+    plain_summary   JSONB,
     pdf_filename    VARCHAR(255),
     status          VARCHAR(50) DEFAULT 'completed',
     created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS plain_summary JSONB;
+
 CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at DESC);
+
+-- =========================================================
+-- 8. RECOMMENDATIONS
+-- Persisted AI route recommendations with time-saved benefits
+-- =========================================================
+CREATE TABLE IF NOT EXISTS recommendations (
+    recommendation_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    original_route_id            UUID REFERENCES routes(route_id) ON DELETE CASCADE,
+    recommended_route_id         UUID REFERENCES routes(route_id) ON DELETE CASCADE,
+    original_congestion_score    DECIMAL(4,2),
+    recommended_congestion_score DECIMAL(4,2),
+    original_eta_mins            DECIMAL(6,2),
+    recommended_eta_mins         DECIMAL(6,2),
+    minutes_saved                DECIMAL(6,2),
+    reason                       TEXT,
+    created_at                   TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_recommendations_created_at ON recommendations(created_at DESC);
 
 -- =========================================================
 -- End of schema

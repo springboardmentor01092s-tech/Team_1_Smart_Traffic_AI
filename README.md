@@ -157,14 +157,37 @@ $$\text{Intensity} = \min\left(1.0, \max\left(0.12, \text{rawCongestion} \times 
 - **Smooth Intensity Animation**:
   When new polled data arrives every 15–30 seconds, intensity transitions smoothly over an 800ms duration via `requestAnimationFrame` interpolation rather than abruptly snapping.
 
-### 3. System Architectural Specifications & Assumptions
-- **Speed & Congestion Threshold Definitions**:
-  - High / Severe Congestion Bottlenecks: `speed_ratio < 0.5` (or current speed `< 30 km/h` when free-flow is 60 km/h). Standard across `trafficController.js` (`getCongestionLevel`), `predictionController.js`, and `routeController.js`.
-  - Sub-optimal Speed Performance Flag: `speed_ratio < 0.6` in `SpeedPanel.jsx` (operational warning flag for sub-optimal speed flow).
-- **Dashboard Travel Time Scope (`avg_travel_time_mins`)**:
-  - Computed across ALL monitored locations with recorded traffic data (normalized over a standard 2.5 km corridor segment length).
-- **Data Refresh Architecture**:
-  - Server-side TomTom API sync: Executes every 15 minutes via `node-cron` (`*/15 * * * *`).
-  - Frontend Heatmap Polling: Internal `/api/traffic` endpoint polled every 15s–30s (no external API calls triggered client-side).
+### 4. AI-Based Recommendations & Reports Module
+- **Bottleneck Pattern Detection**: `GET /api/analytics/bottlenecks` identifies recurring traffic bottlenecks by combining rolling historical traffic data (`speed_ratio < 0.5` frequency) and live traffic readings into a single 0-100 bottleneck score.
+- **AI Route Recommendation Engine**:
+  - `GET /api/routes/recommendations?origin=&destination=`
+  - `GET /api/routes/:id/recommendation`
+  - `GET /api/routes/recommendations/history`
+  - **Threshold & Hysteresis Policy**: Alternate routes require a **$\ge 15\%$ lower** `congestionScore` to trigger an initial recommendation switch. Once recommended, a hysteresis buffer holds the recommendation down to a **$10\%$ holding threshold** (checked via recent `recommendations` DB records) to prevent erratic UI flapping when congestion scores oscillate near 15%.
+  - **Explicit Status Flag**: Returns `status: "alternate_available"` when a faster alternate route meets the threshold, or `status: "already_optimal"` when the current route is optimal.
+  - **Time Saved Computation**: Computes `originalEtaMins` vs `recommendedEtaMins` using Haversine distance and live speed fallback chain, returning `minutesSaved = max(0, originalEtaMins - recommendedEtaMins)`.
+  - **Persistence**: Every generated recommendation is persisted into the PostgreSQL `recommendations` table.
+- **Automated Plain-Language Performance Reports**:
+  - `GET /api/reports/traffic-prediction`
+  - `generate_traffic_report.py` outputs a plain-language summary containing 4 jargon-free sections (`congestion_trends`, `incidents`, `road_performance`, `ai_recommendations`).
+  - Saved to `latest_report.json` and persisted to `plain_summary` column in `reports` database table.
+
+---
+
+## 🧪 Comprehensive Backend Verification Suite
+
+Run the full automated test suite (including route analysis, travel times, predictions, alerts, trends, bottlenecks, recommendations, and plain-language report verification):
+```bash
+cd trafficvision-backend
+node run_full_suite.js
+```
+Or run individual verification scripts:
+```bash
+node test_all_endpoints.js
+node test_analytics_heatmap.js
+node test_analytics_trends_workflows.js
+node test_recommendations.js
+```
+
 
 

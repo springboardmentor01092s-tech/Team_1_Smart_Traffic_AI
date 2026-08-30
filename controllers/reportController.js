@@ -31,12 +31,16 @@ const getLatestReport = async (req, res) => {
     // 1. Try reading latest_report.json artifact first
     if (fs.existsSync(LATEST_REPORT_PATH)) {
       const fileData = fs.readFileSync(LATEST_REPORT_PATH, 'utf8');
-      return res.json(JSON.parse(fileData));
+      const parsed = JSON.parse(fileData);
+      if (!parsed.plain_summary && parsed.summary?.plain_summary) {
+        parsed.plain_summary = parsed.summary.plain_summary;
+      }
+      return res.json(parsed);
     }
 
     // 2. Fallback to querying reports table in PostgreSQL
     const result = await pool.query(
-      `SELECT report_id, report_title, generated_at, pdf_filename, summary_json, status 
+      `SELECT report_id, report_title, generated_at, pdf_filename, summary_json, plain_summary, status 
        FROM reports 
        ORDER BY generated_at DESC 
        LIMIT 1;`
@@ -50,12 +54,16 @@ const getLatestReport = async (req, res) => {
     }
 
     const row = result.rows[0];
+    const summaryData = typeof row.summary_json === 'string' ? JSON.parse(row.summary_json) : row.summary_json;
+    const plainSummaryData = row.plain_summary ? (typeof row.plain_summary === 'string' ? JSON.parse(row.plain_summary) : row.plain_summary) : (summaryData?.plain_summary || null);
+
     res.json({
       report_id: row.report_id,
       report_title: row.report_title,
       generated_at: row.generated_at,
       pdf_filename: row.pdf_filename,
-      summary: typeof row.summary_json === 'string' ? JSON.parse(row.summary_json) : row.summary_json
+      summary: summaryData,
+      plain_summary: plainSummaryData
     });
   } catch (err) {
     console.error('Error fetching latest report:', err);
@@ -76,22 +84,27 @@ const getReportHistory = async (req, res) => {
     limit = Math.min(limit, 100);
 
     const result = await pool.query(
-      `SELECT report_id, report_title, generated_at, pdf_filename, summary_json, status, created_at
+      `SELECT report_id, report_title, generated_at, pdf_filename, summary_json, plain_summary, status, created_at
        FROM reports
        ORDER BY generated_at DESC
        LIMIT $1;`,
       [limit]
     );
 
-    const reports = result.rows.map((row) => ({
-      report_id: row.report_id,
-      report_title: row.report_title,
-      generated_at: row.generated_at,
-      pdf_filename: row.pdf_filename,
-      status: row.status,
-      created_at: row.created_at,
-      summary: typeof row.summary_json === 'string' ? JSON.parse(row.summary_json) : row.summary_json
-    }));
+    const reports = result.rows.map((row) => {
+      const summaryData = typeof row.summary_json === 'string' ? JSON.parse(row.summary_json) : row.summary_json;
+      const plainSummaryData = row.plain_summary ? (typeof row.plain_summary === 'string' ? JSON.parse(row.plain_summary) : row.plain_summary) : (summaryData?.plain_summary || null);
+      return {
+        report_id: row.report_id,
+        report_title: row.report_title,
+        generated_at: row.generated_at,
+        pdf_filename: row.pdf_filename,
+        status: row.status,
+        created_at: row.created_at,
+        summary: summaryData,
+        plain_summary: plainSummaryData
+      };
+    });
 
     res.json({
       count: reports.length,
