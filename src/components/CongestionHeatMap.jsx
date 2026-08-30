@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
+import PulsingMarker from './PulsingMarker';
+import MapVignette from './MapVignette';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 import { getLiveTraffic } from '../api/trafficApi';
@@ -332,11 +334,39 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
               const freeSpeed = loc.free_flow_speed ?? 60;
               const ratio = freeSpeed > 0 ? (currSpeed / freeSpeed).toFixed(2) : '1.0';
               const level = (loc.congestion_level || 'low').toLowerCase();
-
               let badgeBg = '#10b981';
               if (level === 'moderate') badgeBg = '#f59e0b';
               if (level === 'high') badgeBg = '#f97316';
               if (level === 'severe') badgeBg = '#ef4444';
+
+              const popupContent = (
+                <Popup>
+                  <div style={{ fontFamily: 'sans-serif', minWidth: '180px' }}>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0f172a' }}>
+                      {loc.location_name || 'Location'}
+                    </h4>
+                    <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+                      <div>Current Speed: <strong>{currSpeed} km/h</strong></div>
+                      <div>Free Flow Speed: <strong>{freeSpeed} km/h</strong></div>
+                      <div>Speed Ratio: <strong>{ratio}</strong></div>
+                      <div>Vehicles: <strong>{loc.vehicle_count ?? 50}</strong></div>
+                      <div>Congestion: <span style={{ background: badgeBg, color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}>{level}</span></div>
+                    </div>
+                  </div>
+                </Popup>
+              );
+
+              if (level === 'high' || level === 'severe') {
+                return (
+                  <PulsingMarker
+                    key={loc.location_id || `${lat}-${lng}`}
+                    position={[lat, lng]}
+                    severity={level}
+                  >
+                    {popupContent}
+                  </PulsingMarker>
+                );
+              }
 
               const icon = L.divIcon({
                 html: `
@@ -356,25 +386,13 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
 
               return (
                 <Marker key={loc.location_id || `${lat}-${lng}`} position={[lat, lng]} icon={icon}>
-                  <Popup>
-                    <div style={{ fontFamily: 'sans-serif', minWidth: '180px' }}>
-                      <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0f172a' }}>
-                        {loc.location_name || 'Location'}
-                      </h4>
-                      <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
-                        <div>Current Speed: <strong>{currSpeed} km/h</strong></div>
-                        <div>Free Flow Speed: <strong>{freeSpeed} km/h</strong></div>
-                        <div>Speed Ratio: <strong>{ratio}</strong></div>
-                        <div>Vehicles: <strong>{loc.vehicle_count ?? 50}</strong></div>
-                        <div>Congestion: <span style={{ background: badgeBg, color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}>{level}</span></div>
-                      </div>
-                    </div>
-                  </Popup>
+                  {popupContent}
                 </Marker>
               );
             })}
           </MapContainer>
         )}
+        <MapVignette cardColor="#ffffff" strength="medium" />
 
         {/* Heat Map Legend Overlay */}
         <div style={{

@@ -108,11 +108,16 @@ src/
 │   ├── routeApi.js          # Route analysis & travel times
 │   ├── alertApi.js          # Live unusual disruptions
 │   ├── predictionApi.js     # AI congestion predictions
-│   └── analyticsApi.js      # Historical trends & summary stats
+│   └── analyticsApi.js      # Historical trends, daily/weekly aggregation, peak comparison & recurring spots
 ├── components/
 │   ├── MapView.jsx          # Leaflet map with color-coded pins & density highlights
 │   ├── AlertsPanel.jsx      # Auto-polling disruptions feed (15-30s interval)
 │   ├── AnalyticsDashboard.jsx# Recharts dynamic visualization widgets
+│   ├── AnalyticsHeatDashboard.jsx# Integrated single-page analytics & heat map hub
+│   ├── TrendChart.jsx       # Daily / Weekly / Hourly pattern aggregation toggles
+│   ├── PeakComparisonPanel.jsx# Side-by-side Peak vs Non-Peak hour analysis
+│   ├── RecurringCongestionTable.jsx# Ranked recurring congestion spots with threshold filter
+│   ├── PerformanceComparisonView.jsx# Period-over-period comparative analysis (% deltas)
 │   ├── RouteInspector.jsx   # Route analysis scores & travel time breakdown
 │   └── Navbar.jsx           # Top header navigation & TomTom sync trigger
 ├── pages/
@@ -122,7 +127,10 @@ src/
 └── tests/                   # Vitest unit test suite
     ├── MapView.test.jsx
     ├── AlertsPanel.test.jsx
-    └── AnalyticsDashboard.test.jsx
+    ├── AnalyticsDashboard.test.jsx
+    ├── AnalyticsHeatDashboard.test.jsx
+    ├── CongestionHeatMap.test.jsx
+    └── TrendWorkflowsComponents.test.jsx
 ```
 
 ---

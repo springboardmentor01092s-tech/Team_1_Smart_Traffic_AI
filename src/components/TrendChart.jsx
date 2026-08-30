@@ -3,15 +3,16 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
-import { getHistoricalTrends, getBusiestLocations } from '../api/analyticsApi';
+import { getHistoricalTrends, getBusiestLocations, getDailyTrends, getWeeklyTrends } from '../api/analyticsApi';
 
 /**
  * TrendChart Component
- * Renders line chart of traffic density & speed over time from /api/analytics/trends
- * and bar chart of vehicle count by location from /api/analytics/busiest-locations.
+ * Renders line chart of traffic density & speed over time from /api/analytics/trends,
+ * supporting Hourly, Daily, and Weekly pattern aggregation toggles.
  */
 const TrendChart = ({ initialTimeframe = '7d' }) => {
   const [timeframe, setTimeframe] = useState(initialTimeframe);
+  const [granularity, setGranularity] = useState('daily'); // 'daily' | 'weekly' | 'hourly'
   const [trends, setTrends] = useState([]);
   const [busiestLocs, setBusiestLocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,14 +21,23 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
 
   useEffect(() => {
     fetchTrendData();
-  }, [timeframe]);
+  }, [timeframe, granularity]);
 
   const fetchTrendData = async () => {
     setLoading(true);
     setError('');
     try {
+      let trendsPromise;
+      if (granularity === 'daily') {
+        trendsPromise = getDailyTrends(null, timeframe);
+      } else if (granularity === 'weekly') {
+        trendsPromise = getWeeklyTrends(null, timeframe);
+      } else {
+        trendsPromise = getHistoricalTrends(timeframe);
+      }
+
       const [trendsRes, busiestRes] = await Promise.allSettled([
-        getHistoricalTrends(timeframe),
+        trendsPromise,
         getBusiestLocations(10, timeframe)
       ]);
 
@@ -45,24 +55,32 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
     }
   };
 
-  // Format historical trend data for LineChart
+  // Format trend data for LineChart
   const formattedTrends = trends.map((item) => {
-    const timeStr = item.time_bucket
-      ? new Date(item.time_bucket).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit' })
-      : 'N/A';
+    let timeStr = 'N/A';
+    if (item.time_bucket) {
+      const d = new Date(item.time_bucket);
+      if (granularity === 'weekly') {
+        timeStr = `Week of ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+      } else if (granularity === 'daily') {
+        timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } else {
+        timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit' });
+      }
+    }
 
-    const avgSpeed = parseFloat(item.avg_speed_kmph || 0);
+    const avgSpeed = parseFloat(item.avg_speed || item.avg_speed_kmph || 0);
     const avgVehicles = parseInt(item.avg_vehicle_count || 0, 10);
-    
-    // Estimate density % (100% when speed is low ~10kmh, 0% when speed ~70kmh)
-    const estimatedDensity = Math.max(5, Math.min(95, Math.round((1 - Math.min(avgSpeed, 60) / 60) * 100)));
+    const density = item.avg_density !== undefined
+      ? parseFloat(item.avg_density)
+      : Math.max(5, Math.min(95, Math.round((1 - Math.min(avgSpeed, 60) / 60) * 100)));
 
     return {
       time: timeStr,
       speed: avgSpeed,
       vehicles: avgVehicles,
-      density: estimatedDensity,
-      location: item.location_name || 'Location'
+      density: density,
+      location: item.location_name || 'Network Average'
     };
   });
 
@@ -119,6 +137,33 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
                 }}
               >
                 {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Granularity Toggle (Daily / Weekly / Hourly) */}
+          <div style={{ display: 'flex', gap: '4px', background: '#e0e7ff', padding: '3px', borderRadius: '8px' }}>
+            {[
+              { id: 'daily', label: '📅 Daily' },
+              { id: 'weekly', label: '🗓️ Weekly' },
+              { id: 'hourly', label: '⏱️ Hourly' }
+            ].map((g) => (
+              <button
+                key={g.id}
+                onClick={() => setGranularity(g.id)}
+                style={{
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: granularity === g.id ? '700' : '500',
+                  background: granularity === g.id ? '#4338ca' : 'transparent',
+                  color: granularity === g.id ? '#ffffff' : '#3730a3',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {g.label}
               </button>
             ))}
           </div>

@@ -1,5 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import FlowBackground from './FlowBackground';
+import NavTabs from './NavTabs';
 
 const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
   const navigate = useNavigate();
@@ -10,15 +12,18 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
   };
 
   const navItems = [
-    { id: 'map', label: '🗺️ Live Map & Density', icon: '🗺️' },
-    { id: 'analytics-heat', label: '🔥 Heat Map & Analytics', icon: '🔥' },
-    { id: 'alerts', label: '🚨 Unusual Disruptions', icon: '🚨' },
-    { id: 'analytics', label: '📊 Trends Analytics', icon: '📊' },
-    { id: 'routes', label: '🛣️ Route Inspector', icon: '🛣️' }
+    { key: 'map', label: 'Live Map & Density', icon: '🗺️' },
+    { key: 'analytics-heat', label: 'Heat Map & Analytics', icon: '🔥' },
+    { key: 'insights', label: 'AI Insights & Reports', icon: '💡' },
+    { key: 'alerts', label: 'Disruptions', icon: '🚨' },
+    { key: 'analytics', label: 'Trends Analytics', icon: '📊' },
+    { key: 'routes', label: 'Route Inspector', icon: '🛣️' }
   ];
 
   return (
     <header style={{
+      position: 'relative',
+      overflow: 'hidden',
       background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
       color: '#ffffff',
       padding: '14px 24px',
@@ -29,7 +34,8 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
       flexWrap: 'wrap',
       gap: '16px'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <FlowBackground accentColor="#3b82f6" density={7} speed={12} opacity={0.25} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
         <div style={{
           width: '38px',
           height: '38px',
@@ -51,31 +57,18 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
         </div>
       </div>
 
-      {/* View Mode Navigation Tabs */}
-      <nav style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.08)', padding: '4px', borderRadius: '8px' }}>
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            style={{
-              padding: '8px 14px',
-              fontSize: '13px',
-              fontWeight: activeTab === item.id ? '600' : '400',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === item.id ? '#2563eb' : 'transparent',
-              color: activeTab === item.id ? '#ffffff' : '#cbd5e1',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      {/* Sliding Underline Navigation Tabs */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <NavTabs
+          tabs={navItems}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          accentColor="#3b82f6"
+        />
+      </div>
 
       {/* Action Buttons & Logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1 }}>
         {onManualTrigger && (
           <button
             onClick={onManualTrigger}

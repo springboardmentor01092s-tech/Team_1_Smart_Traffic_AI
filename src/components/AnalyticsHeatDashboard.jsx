@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import KPICard from './KPICard';
+import FlowBackground from './FlowBackground';
 import CongestionHeatMap from './CongestionHeatMap';
 import TrendChart from './TrendChart';
 import SpeedPanel from './SpeedPanel';
 import TravelTimeWidget from './TravelTimeWidget';
 import CongestedRoutesTable from './CongestedRoutesTable';
+import PeakComparisonPanel from './PeakComparisonPanel';
+import RecurringCongestionTable from './RecurringCongestionTable';
+import PerformanceComparisonView from './PerformanceComparisonView';
 import { getDashboardSummary } from '../api/analyticsApi';
 
 /**
@@ -57,6 +61,8 @@ const AnalyticsHeatDashboard = () => {
     }}>
       {/* Module Title & Global Control Strip */}
       <div style={{
+        position: 'relative',
+        overflow: 'hidden',
         background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
         borderRadius: '14px',
         padding: '20px 24px',
@@ -68,7 +74,8 @@ const AnalyticsHeatDashboard = () => {
         flexWrap: 'wrap',
         gap: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <FlowBackground accentColor="#f97316" density={6} speed={15} opacity={0.22} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 1 }}>
           <div style={{
             width: '46px',
             height: '46px',
@@ -94,7 +101,7 @@ const AnalyticsHeatDashboard = () => {
         </div>
 
         {/* Global Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
           {/* Refresh interval config */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', background: '#f1f5f9', padding: '6px 12px', borderRadius: '8px' }}>
             <span>⚡ Refresh Rate:</span>
@@ -209,7 +216,12 @@ const AnalyticsHeatDashboard = () => {
         <TrendChart initialTimeframe={globalTimeframe} />
       </section>
 
-      {/* SECTION 4 & 5: AVERAGE SPEED PANEL & TRAVEL TIME WIDGET (Side-by-Side Grid) */}
+      {/* SECTION 4: PEAK VS. NON-PEAK HOUR ANALYSIS PANEL */}
+      <section>
+        <PeakComparisonPanel />
+      </section>
+
+      {/* SECTION 5: AVERAGE SPEED PANEL & TRAVEL TIME WIDGET (Side-by-Side Grid) */}
       <section style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
@@ -219,7 +231,17 @@ const AnalyticsHeatDashboard = () => {
         <TravelTimeWidget />
       </section>
 
-      {/* SECTION 6: MOST CONGESTED ROUTES TABLE */}
+      {/* SECTION 6: RECURRING CONGESTION SPOT IDENTIFICATION */}
+      <section>
+        <RecurringCongestionTable defaultLimit={10} />
+      </section>
+
+      {/* SECTION 7: COMPARATIVE PERFORMANCE REPORTS */}
+      <section>
+        <PerformanceComparisonView />
+      </section>
+
+      {/* SECTION 8: MOST CONGESTED ROUTES TABLE */}
       <section>
         <CongestedRoutesTable limit={15} />
       </section>

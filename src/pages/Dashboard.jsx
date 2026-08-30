@@ -4,6 +4,7 @@ import MapView from '../components/MapView';
 import AlertsPanel from '../components/AlertsPanel';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import AnalyticsHeatDashboard from '../components/AnalyticsHeatDashboard';
+import AIInsightsPanel from '../components/AIInsightsPanel';
 import RouteInspector from '../components/RouteInspector';
 import { getLatestTrafficData, triggerTrafficFetch } from '../api/trafficApi';
 import { getDashboardSummary } from '../api/analyticsApi';
@@ -145,6 +146,12 @@ const Dashboard = () => {
         {activeTab === 'analytics' && (
           <div>
             <AnalyticsDashboard />
+          </div>
+        )}
+
+        {activeTab === 'insights' && (
+          <div>
+            <AIInsightsPanel />
           </div>
         )}
 
