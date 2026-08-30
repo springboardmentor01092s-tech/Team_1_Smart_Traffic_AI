@@ -16,6 +16,8 @@ const {
   getPerformanceComparison
 } = require('../controllers/analyticsController');
 
+const { getBottleneckPatterns } = require('../controllers/patternController');
+
 router.get('/by-location', getCongestionByLocation);
 router.get('/alerts', getAlertsSummary);
 router.get('/summary', getOverallSummary);
@@ -30,5 +32,7 @@ router.get('/dashboard-summary', getDashboardSummary);
 router.get('/peak-comparison', getPeakComparison);
 router.get('/recurring-congestion', getRecurringCongestion);
 router.get('/performance-comparison', getPerformanceComparison);
+router.get('/bottlenecks', getBottleneckPatterns);
+router.get('/patterns', getBottleneckPatterns);
 
 module.exports = router;
