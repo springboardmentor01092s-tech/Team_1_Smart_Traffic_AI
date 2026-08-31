@@ -9,7 +9,12 @@ const router = express.Router();
 // SIGNUP
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, fullName, email, password, role } = req.body;
+    const userName = fullName || name;
+
+    if (!userName || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
 
     const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -20,10 +25,16 @@ router.post('/signup', async (req, res) => {
 
     const newUser = await pool.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING user_id, name, email, role',
-      [name, email, hashedPassword, role || 'viewer']
+      [userName, email, hashedPassword, role || 'viewer']
     );
 
-    res.status(201).json({ message: 'User created successfully', user: newUser.rows[0] });
+    const token = jwt.sign(
+      { user_id: newUser.rows[0].user_id, role: newUser.rows[0].role },
+      process.env.JWT_SECRET || 'default_jwt_secret',
+      { expiresIn: '1d' }
+    );
+
+    res.status(201).json({ message: 'User created successfully', token, user: newUser.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -47,7 +58,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { user_id: user.user_id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'default_jwt_secret',
       { expiresIn: '1d' }
     );
 

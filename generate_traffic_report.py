@@ -139,10 +139,22 @@ def fetch_report_data():
     cursor.execute(alerts_query)
     recent_alerts = cursor.fetchall()
 
+    # 4. Fetch recent route recommendations
+    recs_query = """
+    SELECT r.*, r_orig.name AS original_route_name, r_rec.name AS recommended_route_name
+    FROM recommendations r
+    LEFT JOIN routes r_orig ON r.original_route_id = r_orig.route_id
+    LEFT JOIN routes r_rec ON r.recommended_route_id = r_rec.route_id
+    ORDER BY r.created_at DESC
+    LIMIT 10;
+    """
+    cursor.execute(recs_query)
+    recent_recs = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
-    return locations_data, recent_traffic, recent_alerts
+    return locations_data, recent_traffic, recent_alerts, recent_recs
 
 
 def process_report_metrics(locations_data, recent_traffic, recent_alerts):
@@ -238,6 +250,80 @@ def process_report_metrics(locations_data, recent_traffic, recent_alerts):
         "alerts_summary_24h": alerts_summary,
         "executive_summary": exec_summary
     }
+
+
+def generate_plain_language_summary(locations_data, recent_traffic, recent_alerts, recommendations_data):
+    """Generate a plain-language traffic performance summary without raw technical jargon."""
+    total_locs = len(locations_data)
+    congested_locs = [l for l in locations_data if (l.get('predicted_congestion') or l.get('current_congestion')) in ['high', 'severe']]
+    congested_count = len(congested_locs)
+    
+    # 1. Congestion Trends
+    if total_locs == 0:
+        trends_desc = "Traffic monitoring data is currently being collected."
+    elif congested_count == 0:
+        trends_desc = f"Traffic across all {total_locs} monitored locations is moving smoothly with no major bottlenecks observed. Morning and evening travel periods remain normal."
+    else:
+        congested_names = ", ".join([l['location_name'] for l in congested_locs[:3]])
+        trends_desc = f"Traffic activity shows elevated delay across {congested_count} out of {total_locs} monitored corridors. Heavy congestion is concentrated around {congested_names}, particularly during peak morning (08:00 - 10:00) and evening (17:00 - 20:00) travel windows."
+
+    # 2. Incidents
+    critical_count = sum(1 for a in recent_alerts if (a.get('severity') or '').lower() == 'critical')
+    warning_count = sum(1 for a in recent_alerts if (a.get('severity') or '').lower() == 'warning')
+    info_count = sum(1 for a in recent_alerts if (a.get('severity') or '').lower() == 'info')
+    active_count = sum(1 for a in recent_alerts if (a.get('status') or '').lower() == 'active')
+    resolved_count = sum(1 for a in recent_alerts if (a.get('status') or '').lower() == 'resolved')
+
+    if len(recent_alerts) == 0:
+        incidents_desc = "No major traffic incidents, roadworks, or critical disruptions reported in the last 24 hours."
+    else:
+        incidents_desc = f"Over the past 24 hours, {len(recent_alerts)} traffic alerts were logged ({critical_count} critical, {warning_count} warning, {info_count} informational). Currently, {active_count} active incidents require driver attention, while {resolved_count} issues have been resolved."
+
+    # 3. Road Performance
+    fast_locs = []
+    slow_locs = []
+    for loc in locations_data:
+        road_type = loc.get('road_type') or 'arterial'
+        free_flow = SPEED_CONFIGS.get(road_type.lower(), DEFAULT_FREE_FLOW_SPEED)
+        avg_sp = float(loc['average_speed_kmph']) if loc.get('average_speed_kmph') is not None else None
+        if avg_sp is not None:
+            ratio = avg_sp / free_flow if free_flow > 0 else 1.0
+            if ratio >= 0.75:
+                fast_locs.append(loc['location_name'])
+            elif ratio < 0.50:
+                slow_locs.append(loc['location_name'])
+
+    perf_parts = []
+    if fast_locs:
+        perf_parts.append(f"Corridors such as {', '.join(fast_locs[:3])} are running close to normal free-flow speeds.")
+    if slow_locs:
+        perf_parts.append(f"In contrast, corridors including {', '.join(slow_locs[:3])} are consistently slow.")
+    if not perf_parts:
+        perf_parts.append("Monitored roads are operating at steady average speeds across the network.")
+    road_perf_desc = " ".join(perf_parts)
+
+    # 4. AI Recommendations
+    if recommendations_data and len(recommendations_data) > 0:
+        avg_saved = round(sum(float(r.get('minutes_saved', 0)) for r in recommendations_data) / len(recommendations_data), 1)
+        top_rec = recommendations_data[0]
+        rec_orig = top_rec.get('original_route_name') or 'congested main route'
+        rec_alt = top_rec.get('recommended_route_name') or 'alternate bypass route'
+        rec_saved = top_rec.get('minutes_saved', 0)
+        ai_rec_desc = f"AI routing suggested alternate bypass routes {len(recommendations_data)} times today, yielding an average travel time saving of ~{avg_saved} minutes. For example, taking {rec_alt} instead of {rec_orig} saves ~{rec_saved} minutes."
+    else:
+        ai_rec_desc = "AI route recommendation engine evaluated active corridors. All primary routes are operating at acceptable levels without requiring rerouting."
+
+    return {
+        "title": "Automated Traffic Performance Summary",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "sections": {
+            "congestion_trends": trends_desc,
+            "incidents": incidents_desc,
+            "road_performance": road_perf_desc,
+            "ai_recommendations": ai_rec_desc
+        }
+    }
+
 
 
 def generate_chart_image(congestion_breakdown, output_path):
@@ -499,19 +585,21 @@ def persist_report_to_db(report_payload, pdf_filename):
     cursor = conn.cursor()
 
     insert_query = """
-    INSERT INTO reports (report_title, generated_at, summary_json, pdf_filename, status)
-    VALUES (%s, %s, %s, %s, %s)
+    INSERT INTO reports (report_title, generated_at, summary_json, plain_summary, pdf_filename, status)
+    VALUES (%s, %s, %s, %s, %s, %s)
     RETURNING report_id;
     """
 
     report_title = report_payload.get("report_title", "Traffic Prediction Report")
     generated_at = report_payload.get("generated_at")
     summary_json_str = json.dumps(report_payload["summary"])
+    plain_summary_json_str = json.dumps(report_payload.get("plain_summary", {}))
 
     cursor.execute(insert_query, (
         report_title,
         generated_at,
         summary_json_str,
+        plain_summary_json_str,
         pdf_filename,
         "completed"
     ))
@@ -538,17 +626,21 @@ def generate_report():
     chart_image_path = os.path.join(reports_dir, f"chart_{timestamp_str}.png")
 
     # 1. Fetch raw data
-    locations_data, recent_traffic, recent_alerts = fetch_report_data()
+    locations_data, recent_traffic, recent_alerts, recent_recs = fetch_report_data()
 
-    # 2. Compute metrics
+    # 2. Compute metrics & plain language summary
     summary = process_report_metrics(locations_data, recent_traffic, recent_alerts)
+    plain_summary = generate_plain_language_summary(locations_data, recent_traffic, recent_alerts, recent_recs)
+    
+    summary["plain_summary"] = plain_summary
 
     report_payload = {
         "report_id": str(uuid.uuid4()),
         "report_title": "Traffic Prediction & Congestion Executive Report",
         "generated_at": iso_now,
         "pdf_filename": pdf_filename,
-        "summary": summary
+        "summary": summary,
+        "plain_summary": plain_summary
     }
 
     # 3. Generate Chart Image

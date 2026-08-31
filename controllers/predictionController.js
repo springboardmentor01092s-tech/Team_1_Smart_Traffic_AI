@@ -70,7 +70,7 @@ if (newPrediction.predicted_congestion === 'high' || newPrediction.predicted_con
       newPrediction.prediction_id,
       severityMap[newPrediction.predicted_congestion],
       `${newPrediction.predicted_congestion === 'severe' ? 'Severe' : 'High'} congestion predicted at location ${newPrediction.location_id}`,
-      'active'
+      'Active'
     ]
   );
 }
