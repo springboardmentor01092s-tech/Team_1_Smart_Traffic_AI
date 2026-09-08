@@ -149,6 +149,19 @@ CREATE TABLE IF NOT EXISTS recommendations (
 CREATE INDEX IF NOT EXISTS idx_recommendations_created_at ON recommendations(created_at DESC);
 
 -- =========================================================
+-- 9. PERFORMANCE OPTIMIZATION INDEXES
+-- Additional compound & single-column indexes for analytics query acceleration
+-- =========================================================
+CREATE INDEX IF NOT EXISTS idx_traffic_data_recorded_at ON traffic_data(recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_traffic_data_loc_recorded_speed ON traffic_data(location_id, recorded_at DESC, average_speed_kmph);
+CREATE INDEX IF NOT EXISTS idx_route_locations_loc_id ON route_locations(location_id);
+CREATE INDEX IF NOT EXISTS idx_recommendations_orig_route ON recommendations(original_route_id);
+CREATE INDEX IF NOT EXISTS idx_recommendations_rec_route ON recommendations(recommended_route_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_location_id ON alerts(location_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_status_severity ON alerts(status, severity);
+
+-- =========================================================
 -- End of schema
 -- =========================================================
+
 

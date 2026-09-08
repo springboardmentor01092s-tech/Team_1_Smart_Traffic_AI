@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const connectionConfig = process.env.DATABASE_URL
   ? {
