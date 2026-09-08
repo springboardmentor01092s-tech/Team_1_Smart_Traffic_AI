@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import KPICard from './KPICard';
 import FlowBackground from './FlowBackground';
 import CongestionHeatMap from './CongestionHeatMap';
@@ -11,6 +11,15 @@ import RecurringCongestionTable from './RecurringCongestionTable';
 import PerformanceComparisonView from './PerformanceComparisonView';
 import { getDashboardSummary } from '../api/analyticsApi';
 
+// Sparkline mock trends for KPI strip (static data constant to avoid re-allocation)
+const SPARKLINES = {
+  locations: [8, 9, 9, 10, 10, 10, 10, 10],
+  density: [55, 60, 52, 48, 62, 70, 58, 48.5],
+  vehicles: [70, 75, 82, 90, 88, 95, 84, 82],
+  speed: [32, 34, 30, 28, 33, 36, 35, 35.5],
+  travelTime: [18, 17, 19, 21, 16, 15, 14.8, 14.2]
+};
+
 /**
  * AnalyticsHeatDashboard Component
  * Single-page interactive Analytics & Heat Map Dashboard module for TrafficVision AI.
@@ -20,13 +29,10 @@ const AnalyticsHeatDashboard = () => {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [error, setError] = useState('');
   const [globalTimeframe, setGlobalTimeframe] = useState('7d');
-  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState(20);
+  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState(30);
 
-  useEffect(() => {
-    fetchSummary();
-  }, []);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     setLoadingSummary(true);
     setError('');
     try {
@@ -38,16 +44,12 @@ const AnalyticsHeatDashboard = () => {
     } finally {
       setLoadingSummary(false);
     }
-  };
+  }, []);
 
-  // Sparkline mock trends for KPI strip (derived or visually illustrative)
-  const sparklines = {
-    locations: [8, 9, 9, 10, 10, 10, 10, 10],
-    density: [55, 60, 52, 48, 62, 70, 58, 48.5],
-    vehicles: [70, 75, 82, 90, 88, 95, 84, 82],
-    speed: [32, 34, 30, 28, 33, 36, 35, 35.5],
-    travelTime: [18, 17, 19, 21, 16, 15, 14.8, 14.2]
-  };
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
 
   return (
     <div style={{
@@ -63,11 +65,11 @@ const AnalyticsHeatDashboard = () => {
       <div style={{
         position: 'relative',
         overflow: 'hidden',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        background: 'var(--header-bg, linear-gradient(135deg, #ffffff 0%, #f8fafc 100%))',
         borderRadius: '14px',
         padding: '20px 24px',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.05)',
-        border: '1px solid #e2e8f0',
+        boxShadow: 'var(--card-shadow-resting, 0 4px 14px rgba(0,0,0,0.05))',
+        border: '1px solid var(--card-border-color, #e2e8f0)',
         display: 'flex',
         justify: 'space-between',
         alignItems: 'center',
@@ -91,10 +93,10 @@ const AnalyticsHeatDashboard = () => {
             🔥
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px' }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: 'var(--text-primary, #0f172a)', letterSpacing: '-0.5px' }}>
               TrafficVision AI Analytics & Heat Map Module
             </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
               Real-time congestion heat mapping, speed performance ratios, travel time forecasts & route metrics
             </p>
           </div>
@@ -103,12 +105,12 @@ const AnalyticsHeatDashboard = () => {
         {/* Global Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
           {/* Refresh interval config */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', background: '#f1f5f9', padding: '6px 12px', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary, #475569)', background: 'var(--control-bg, #f1f5f9)', padding: '6px 12px', borderRadius: '8px' }}>
             <span>⚡ Refresh Rate:</span>
             <select
               value={autoRefreshIntervalSec}
               onChange={(e) => setAutoRefreshIntervalSec(Number(e.target.value))}
-              style={{ border: 'none', background: 'transparent', fontWeight: 'bold', cursor: 'pointer', color: '#0f172a' }}
+              style={{ border: 'none', background: 'transparent', fontWeight: 'bold', cursor: 'pointer', color: 'var(--text-primary, #0f172a)' }}
             >
               <option value={15}>15 seconds</option>
               <option value={20}>20 seconds</option>
@@ -153,7 +155,7 @@ const AnalyticsHeatDashboard = () => {
           unit="spots"
           trend={+4.2}
           trendLabel="vs last week"
-          sparklineData={sparklines.locations}
+          sparklineData={SPARKLINES.locations}
           icon="📍"
           accentColor="#3b82f6"
           loading={loadingSummary}
@@ -164,7 +166,7 @@ const AnalyticsHeatDashboard = () => {
           unit="%"
           trend={-3.1}
           trendLabel="density change"
-          sparklineData={sparklines.density}
+          sparklineData={SPARKLINES.density}
           icon="🔥"
           accentColor="#ef4444"
           isInvertedTrend={true}
@@ -176,7 +178,7 @@ const AnalyticsHeatDashboard = () => {
           unit="v/loc"
           trend={+5.8}
           trendLabel="vs prior period"
-          sparklineData={sparklines.vehicles}
+          sparklineData={SPARKLINES.vehicles}
           icon="🚗"
           accentColor="#f59e0b"
           loading={loadingSummary}
@@ -187,7 +189,7 @@ const AnalyticsHeatDashboard = () => {
           unit="km/h"
           trend={+2.4}
           trendLabel="speed recovery"
-          sparklineData={sparklines.speed}
+          sparklineData={SPARKLINES.speed}
           icon="⚡"
           accentColor="#10b981"
           loading={loadingSummary}
@@ -198,7 +200,7 @@ const AnalyticsHeatDashboard = () => {
           unit="mins"
           trend={-1.8}
           trendLabel="trip time decrease"
-          sparklineData={sparklines.travelTime}
+          sparklineData={SPARKLINES.travelTime}
           icon="⏱️"
           accentColor="#8b5cf6"
           isInvertedTrend={true}
@@ -249,4 +251,5 @@ const AnalyticsHeatDashboard = () => {
   );
 };
 
-export default AnalyticsHeatDashboard;
+export default React.memo(AnalyticsHeatDashboard);
+

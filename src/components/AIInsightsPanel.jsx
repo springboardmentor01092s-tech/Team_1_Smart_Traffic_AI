@@ -22,13 +22,47 @@ const AIInsightsPanel = () => {
   useEffect(() => {
     loadInitialData();
 
-    // Auto-refresh polling every 30 seconds
-    const intervalId = setInterval(() => {
-      loadInsightsSilently();
-    }, 30000);
+    let intervalId = null;
 
-    return () => clearInterval(intervalId);
+    const startPolling = () => {
+      if (!intervalId) {
+        intervalId = setInterval(() => {
+          if (!document.hidden) {
+            loadInsightsSilently();
+          }
+        }, 30000);
+      }
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    if (!document.hidden) {
+      startPolling();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        loadInsightsSilently();
+        stopPolling();
+        startPolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -47,9 +81,15 @@ const AIInsightsPanel = () => {
       if (routesRes.status === 'fulfilled' && Array.isArray(routesRes.value)) {
         setRoutes(routesRes.value);
         if (routesRes.value.length > 0) {
-          const defaultId = routesRes.value[0].route_id;
-          setSelectedRouteId(defaultId);
-          fetchRecommendationForRoute(defaultId);
+          const validRoute = routesRes.value.find(r => {
+            if (!r || !r.route_id) return false;
+            if (Array.isArray(r.locations)) return r.locations.length >= 2;
+            return true;
+          });
+          if (validRoute) {
+            setSelectedRouteId(validRoute.route_id);
+            fetchRecommendationForRoute(validRoute.route_id);
+          }
         }
       }
       if (historyRes.status === 'fulfilled') {
@@ -115,26 +155,27 @@ const AIInsightsPanel = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Top Banner Header */}
+
       <div style={{
         background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
         color: '#ffffff',
-        padding: '24px 28px',
+        padding: 'clamp(16px, 4vw, 24px) clamp(16px, 4vw, 28px)',
         borderRadius: '16px',
         boxShadow: '0 8px 24px rgba(49, 46, 129, 0.25)',
         display: 'flex',
-        justifyContent: 'space-between',
+        justify: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '24px' }}>💡</span>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '700', letterSpacing: '-0.5px' }}>
+            <h2 style={{ margin: 0, fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: '700', letterSpacing: '-0.5px' }}>
               AI Recommendations & Performance Insights
             </h2>
           </div>
-          <p style={{ margin: '6px 0 0 34px', fontSize: '13px', color: '#c7d2fe', maxWidth: '700px' }}>
+          <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#c7d2fe', maxWidth: '700px' }}>
             Real-time route optimization with time-saved metrics and plain-language automated performance intelligence.
           </p>
         </div>
@@ -167,17 +208,17 @@ const AIInsightsPanel = () => {
       )}
 
       {/* Grid Row 1: AI Route Recommendation Engine */}
-      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
+      <div style={{ background: '#ffffff', borderRadius: '16px', padding: 'clamp(14px, 3vw, 24px)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               🧭 AI Route Recommendation Engine
             </h3>
             <span style={{ fontSize: '12px', color: '#64748b' }}>Select a target corridor to evaluate live alternate routes & time saved</span>
           </div>
 
           {routes.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Inspect Route:</label>
               <select
                 value={selectedRouteId}
@@ -190,7 +231,8 @@ const AIInsightsPanel = () => {
                   background: '#f8fafc',
                   color: '#0f172a',
                   fontWeight: '500',
-                  outline: 'none'
+                  outline: 'none',
+                  maxWidth: '100%'
                 }}
               >
                 {routes.map(r => (
@@ -211,7 +253,7 @@ const AIInsightsPanel = () => {
               ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
               : 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
             borderRadius: '12px',
-            padding: '24px',
+            padding: 'clamp(14px, 3vw, 24px)',
             border: activeRecommendation.status === 'already_optimal' || activeRecommendation.minutesSaved === 0
               ? '2px solid #22c55e'
               : '2px solid #10b981',
@@ -252,7 +294,7 @@ const AIInsightsPanel = () => {
 
               {/* Travel Time Comparison Metric Cards */}
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ background: '#ffffff', padding: '14px 18px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center', minWidth: '130px' }}>
+                <div style={{ background: '#ffffff', padding: '14px 18px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center', minWidth: '120px', flex: '1 1 auto' }}>
                   <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Target Corridor</div>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: activeRecommendation.status === 'already_optimal' ? '#16a34a' : '#ef4444', marginTop: '4px' }}>
                     {activeRecommendation.originalEtaMins} <span style={{ fontSize: '12px', color: '#64748b' }}>min</span>
@@ -261,7 +303,7 @@ const AIInsightsPanel = () => {
                 </div>
 
                 {activeRecommendation.status !== 'already_optimal' && (
-                  <div style={{ background: '#ffffff', padding: '14px 18px', borderRadius: '10px', border: '1px solid #10b981', textAlign: 'center', minWidth: '130px' }}>
+                  <div style={{ background: '#ffffff', padding: '14px 18px', borderRadius: '10px', border: '1px solid #10b981', textAlign: 'center', minWidth: '120px', flex: '1 1 auto' }}>
                     <div style={{ fontSize: '11px', color: '#047857', fontWeight: '600', textTransform: 'uppercase' }}>Recommended</div>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981', marginTop: '4px' }}>
                       {activeRecommendation.recommendedEtaMins} <span style={{ fontSize: '12px', color: '#64748b' }}>min</span>
@@ -280,10 +322,11 @@ const AIInsightsPanel = () => {
       </div>
 
       {/* Grid Row 2: Bottleneck Patterns & Plain Language Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
         {/* Task 1: Top Bottleneck Patterns */}
-        <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
+        <div style={{ background: '#ffffff', borderRadius: '16px', padding: 'clamp(14px, 3vw, 24px)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0', minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🚨 Top Recurring Bottlenecks
             </h3>

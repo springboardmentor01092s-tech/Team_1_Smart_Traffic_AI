@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AlertsPanel from '../components/AlertsPanel';
 import * as alertApi from '../api/alertApi';
@@ -90,5 +90,51 @@ describe('AlertsPanel Component Tests', () => {
     fireEvent.click(notifyBtn);
 
     expect(alertApi.updateAlertStatus).toHaveBeenCalledWith('alert-1', 'Notified');
+  });
+
+  it('pauses polling when tab is hidden and resumes with immediate fetch when visible', async () => {
+    vi.useFakeTimers();
+    alertApi.getAllAlerts.mockResolvedValue(sampleAlerts);
+
+    render(<AlertsPanel />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(alertApi.getAllAlerts).toHaveBeenCalledTimes(1);
+
+    // Fast-forward 30 seconds -> poll fires
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(alertApi.getAllAlerts).toHaveBeenCalledTimes(2);
+
+    // Hide tab
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Fast-forward 60 seconds while hidden -> no new calls
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
+    expect(alertApi.getAllAlerts).toHaveBeenCalledTimes(2);
+
+    // Make tab visible again
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Immediate fetch on visible
+    expect(alertApi.getAllAlerts).toHaveBeenCalledTimes(3);
+
+    // Fast-forward 30 seconds while visible -> polling resumes
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(alertApi.getAllAlerts).toHaveBeenCalledTimes(4);
+
+    vi.useRealTimers();
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AIInsightsPanel from '../components/AIInsightsPanel';
 import * as recApi from '../api/recommendationsApi';
@@ -84,5 +84,55 @@ describe('AIInsightsPanel Component Unit Tests', () => {
     });
 
     expect(screen.getByText(/Save ~8 min via Route B/i)).toBeInTheDocument();
+  });
+
+  it('pauses polling when tab is hidden and resumes with immediate fetch when visible', async () => {
+    vi.useFakeTimers();
+    recApi.getBottleneckPatterns.mockResolvedValue([]);
+    routeApi.getAllRoutes.mockResolvedValue([{ route_id: 'r1', name: 'Route A' }]);
+    recApi.getRecommendationHistory.mockResolvedValue([]);
+    recApi.getLatestReportWithPlainSummary.mockResolvedValue(null);
+    recApi.getRouteRecommendation.mockResolvedValue(null);
+
+    render(<AIInsightsPanel />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(recApi.getBottleneckPatterns).toHaveBeenCalledTimes(1);
+
+    // Fast forward 30s -> silent poll fires
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(recApi.getBottleneckPatterns).toHaveBeenCalledTimes(2);
+
+    // Hide tab
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Fast forward 60s while hidden -> no new calls
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
+    expect(recApi.getBottleneckPatterns).toHaveBeenCalledTimes(2);
+
+    // Make visible again
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Immediate fetch on visible
+    expect(recApi.getBottleneckPatterns).toHaveBeenCalledTimes(3);
+
+    // Fast forward 30s -> polling resumes
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(recApi.getBottleneckPatterns).toHaveBeenCalledTimes(4);
+
+    vi.useRealTimers();
   });
 });

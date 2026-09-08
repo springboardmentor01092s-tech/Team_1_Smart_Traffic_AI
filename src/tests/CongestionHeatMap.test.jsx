@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CongestionHeatMap from '../components/CongestionHeatMap';
 import * as trafficApi from '../api/trafficApi';
@@ -80,5 +80,51 @@ describe('CongestionHeatMap Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to fetch heat map traffic data/i)).toBeInTheDocument();
     });
+  });
+
+  it('pauses polling when tab is hidden and resumes with immediate fetch when visible', async () => {
+    vi.useFakeTimers();
+    trafficApi.getLiveTraffic.mockResolvedValue([]);
+
+    render(<CongestionHeatMap refreshIntervalSec={30} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(trafficApi.getLiveTraffic).toHaveBeenCalledTimes(1);
+
+    // Fast forward 30s -> polling fires
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(trafficApi.getLiveTraffic).toHaveBeenCalledTimes(2);
+
+    // Hide tab
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Fast forward 60s while hidden -> no new calls
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
+    expect(trafficApi.getLiveTraffic).toHaveBeenCalledTimes(2);
+
+    // Make visible again
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    // Immediate fetch on visible
+    expect(trafficApi.getLiveTraffic).toHaveBeenCalledTimes(3);
+
+    // Fast forward 30s -> polling resumes
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    expect(trafficApi.getLiveTraffic).toHaveBeenCalledTimes(4);
+
+    vi.useRealTimers();
   });
 });

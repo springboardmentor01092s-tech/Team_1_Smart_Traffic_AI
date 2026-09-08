@@ -288,3 +288,21 @@ label.tv-label{
   .tv-readouts{ padding:24px; }
   .tv-readout-head{ font-size:16px; }
 }
+
+@media (max-width: 576px){
+  .tv-panel-form{ padding:28px 16px; }
+  .tv-headline{ font-size:24px; margin:18px 0 6px; }
+  .tv-subhead{ font-size:13px; margin-bottom:20px; }
+  .tv-tabs{ margin-bottom:20px; width:100%; justify-content:stretch; }
+  .tv-tab{ flex:1; text-align:center; padding:8px 12px; font-size:12.5px; }
+  .tv-role-toggle{ flex-direction:column; gap:6px; }
+  .tv-readouts{ padding:16px; }
+}
+
+@media (max-width: 360px){
+  .tv-panel-form{ padding:20px 12px; }
+  .tv-brand-name{ font-size:18px; }
+  .tv-headline{ font-size:20px; }
+  .tv-submit-btn{ font-size:14px; padding:12px; }
+}
+

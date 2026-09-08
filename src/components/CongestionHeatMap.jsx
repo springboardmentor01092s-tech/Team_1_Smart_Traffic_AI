@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import PulsingMarker from './PulsingMarker';
@@ -47,6 +47,14 @@ const HeatmapLayer = ({ points, radius = 30, blur = 18 }) => {
         heatLayerRef.current.setLatLngs(targetPoints);
         currentPointsRef.current = targetPoints;
       } else {
+        // Skip animation if values are unchanged
+        const isUnchanged = startPoints.every((pt, i) => {
+          const t = targetPoints[i];
+          return pt && t && pt[0] === t[0] && pt[1] === t[1] && Math.abs(pt[2] - t[2]) < 0.001;
+        });
+
+        if (isUnchanged) return;
+
         const startTime = performance.now();
         const duration = 800; // 800ms smooth lerp animation
 
@@ -92,6 +100,73 @@ const HeatmapLayer = ({ points, radius = 30, blur = 18 }) => {
   return null;
 };
 
+// Memoized Individual Marker Renderer for CongestionHeatMap
+const HeatMapMarkerItem = React.memo(({ loc }) => {
+  const lat = parseFloat(loc.latitude);
+  const lng = parseFloat(loc.longitude);
+  if (isNaN(lat) || isNaN(lng)) return null;
+
+  const currSpeed = loc.current_speed ?? loc.average_speed_kmph ?? 30;
+  const freeSpeed = loc.free_flow_speed ?? 60;
+  const ratio = freeSpeed > 0 ? (currSpeed / freeSpeed).toFixed(2) : '1.0';
+  const level = (loc.congestion_level || 'low').toLowerCase();
+  let badgeBg = '#10b981';
+  if (level === 'moderate') badgeBg = '#f59e0b';
+  if (level === 'high') badgeBg = '#f97316';
+  if (level === 'severe') badgeBg = '#ef4444';
+
+  const popupContent = (
+    <Popup>
+      <div style={{ fontFamily: 'sans-serif', minWidth: '180px' }}>
+        <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0f172a' }}>
+          {loc.location_name || 'Location'}
+        </h4>
+        <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
+          <div>Current Speed: <strong>{currSpeed} km/h</strong></div>
+          <div>Free Flow Speed: <strong>{freeSpeed} km/h</strong></div>
+          <div>Speed Ratio: <strong>{ratio}</strong></div>
+          <div>Vehicles: <strong>{loc.vehicle_count ?? 50}</strong></div>
+          <div>Congestion: <span style={{ background: badgeBg, color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}>{level}</span></div>
+        </div>
+      </div>
+    </Popup>
+  );
+
+  if (level === 'high' || level === 'severe') {
+    return (
+      <PulsingMarker
+        key={loc.location_id || `${lat}-${lng}`}
+        position={[lat, lng]}
+        severity={level}
+      >
+        {popupContent}
+      </PulsingMarker>
+    );
+  }
+
+  const icon = L.divIcon({
+    html: `
+      <div style="
+        background: ${badgeBg};
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 6px ${badgeBg};
+      "></div>
+    `,
+    className: 'heat-point-marker',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+
+  return (
+    <Marker key={loc.location_id || `${lat}-${lng}`} position={[lat, lng]} icon={icon}>
+      {popupContent}
+    </Marker>
+  );
+});
+
 // Map Recenter Helper
 const MapRecenter = ({ center }) => {
   const map = useMap();
@@ -103,7 +178,7 @@ const MapRecenter = ({ center }) => {
   return null;
 };
 
-const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
+const CongestionHeatMap = ({ refreshIntervalSec = 30 }) => {
   const [timeframe, setTimeframe] = useState('live'); // 'live' | '1h' | '24h'
   const [trafficPoints, setTrafficPoints] = useState([]);
   const [rawLocations, setRawLocations] = useState([]);
@@ -115,7 +190,7 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
   const [heatmapRadius, setHeatmapRadius] = useState(30);
 
   // Fetch live traffic data
-  const fetchTraffic = async (isInitial = false) => {
+  const fetchTraffic = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
       const data = await getLiveTraffic(timeframe);
@@ -165,28 +240,69 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
     } finally {
       if (isInitial) setLoading(false);
     }
-  };
+  }, [timeframe, refreshIntervalSec]);
 
-  // Poll timer setup
+  // Poll timer setup with tab visibility optimization
   useEffect(() => {
     console.log(`[CongestionHeatMap] Mounted polling interval: ${refreshIntervalSec}s (timeframe=${timeframe})`);
     fetchTraffic(true);
 
-    const pollInterval = setInterval(() => {
-      console.log(`[CongestionHeatMap] Polling internal /api/traffic (timeframe=${timeframe})...`);
-      fetchTraffic(false);
-    }, refreshIntervalSec * 1000);
+    let pollIntervalId = null;
+    let countdownIntervalId = null;
 
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => (prev > 1 ? prev - 1 : refreshIntervalSec));
-    }, 1000);
+    const startPolling = () => {
+      if (!pollIntervalId) {
+        pollIntervalId = setInterval(() => {
+          if (!document.hidden) {
+            console.log(`[CongestionHeatMap] Polling internal /api/traffic (timeframe=${timeframe})...`);
+            fetchTraffic(false);
+          }
+        }, refreshIntervalSec * 1000);
+      }
+      if (!countdownIntervalId) {
+        countdownIntervalId = setInterval(() => {
+          if (!document.hidden) {
+            setCountdown((prev) => (prev > 1 ? prev - 1 : refreshIntervalSec));
+          }
+        }, 1000);
+      }
+    };
+
+    const stopPolling = () => {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = null;
+      }
+      if (countdownIntervalId) {
+        clearInterval(countdownIntervalId);
+        countdownIntervalId = null;
+      }
+    };
+
+    if (!document.hidden) {
+      startPolling();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchTraffic(false);
+        setCountdown(refreshIntervalSec);
+        stopPolling();
+        startPolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log(`[CongestionHeatMap] Cleared polling interval timers (${refreshIntervalSec}s)`);
-      clearInterval(pollInterval);
-      clearInterval(countdownInterval);
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [timeframe, refreshIntervalSec]);
+  }, [timeframe, refreshIntervalSec, fetchTraffic]);
+
 
   // Center calculation
   const mapCenter = useMemo(() => {
@@ -195,6 +311,7 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
     }
     return [12.9716, 77.5946]; // Default fallback center (e.g. Bangalore)
   }, [trafficPoints]);
+
 
   return (
     <div style={{
@@ -301,11 +418,49 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
       {/* Map Container */}
       <div style={{ position: 'relative', width: '100%', height: '500px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
         {loading ? (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#64748b' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🛰️</div>
-            <div>Rendering Traffic Heat Map...</div>
+          <div style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justify: 'center',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            color: '#f8fafc',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <style>{`
+              .map-skeleton-grid {
+                position: absolute; inset: 0;
+                background-image:
+                  linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+                background-size: 32px 32px;
+              }
+              .map-radar-pulse {
+                width: 120px; height: 120px;
+                border-radius: 50%;
+                border: 2px solid rgba(59, 130, 246, 0.6);
+                animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+                position: absolute;
+              }
+              @keyframes radar-ping {
+                75%, 100% { transform: scale(2.2); opacity: 0; }
+              }
+            `}</style>
+            <div className="map-skeleton-grid" />
+            <div className="map-radar-pulse" />
+            <div style={{ fontSize: '36px', marginBottom: '14px', zIndex: 2, filter: 'drop-shadow(0 0 10px rgba(59,130,246,0.5))' }}>🛰️</div>
+            <div style={{ zIndex: 2, fontWeight: '700', fontSize: '15px', letterSpacing: '0.02em', color: '#60a5fa' }}>
+              CALIBRATING LIVE HEAT MAP... (Rendering Traffic Heat Map)
+            </div>
+
+            <div style={{ zIndex: 2, fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+              Fetching traffic density, vehicle counts & spatial nodes
+            </div>
           </div>
         ) : (
+
           <MapContainer
             center={mapCenter}
             zoom={12}
@@ -324,73 +479,12 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
               <HeatmapLayer points={trafficPoints} radius={heatmapRadius} blur={20} />
             )}
 
-            {/* Location Markers with detailed traffic Popups */}
-            {showMarkers && rawLocations.map((loc) => {
-              const lat = parseFloat(loc.latitude);
-              const lng = parseFloat(loc.longitude);
-              if (isNaN(lat) || isNaN(lng)) return null;
-
-              const currSpeed = loc.current_speed ?? loc.average_speed_kmph ?? 30;
-              const freeSpeed = loc.free_flow_speed ?? 60;
-              const ratio = freeSpeed > 0 ? (currSpeed / freeSpeed).toFixed(2) : '1.0';
-              const level = (loc.congestion_level || 'low').toLowerCase();
-              let badgeBg = '#10b981';
-              if (level === 'moderate') badgeBg = '#f59e0b';
-              if (level === 'high') badgeBg = '#f97316';
-              if (level === 'severe') badgeBg = '#ef4444';
-
-              const popupContent = (
-                <Popup>
-                  <div style={{ fontFamily: 'sans-serif', minWidth: '180px' }}>
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0f172a' }}>
-                      {loc.location_name || 'Location'}
-                    </h4>
-                    <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#475569' }}>
-                      <div>Current Speed: <strong>{currSpeed} km/h</strong></div>
-                      <div>Free Flow Speed: <strong>{freeSpeed} km/h</strong></div>
-                      <div>Speed Ratio: <strong>{ratio}</strong></div>
-                      <div>Vehicles: <strong>{loc.vehicle_count ?? 50}</strong></div>
-                      <div>Congestion: <span style={{ background: badgeBg, color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}>{level}</span></div>
-                    </div>
-                  </div>
-                </Popup>
-              );
-
-              if (level === 'high' || level === 'severe') {
-                return (
-                  <PulsingMarker
-                    key={loc.location_id || `${lat}-${lng}`}
-                    position={[lat, lng]}
-                    severity={level}
-                  >
-                    {popupContent}
-                  </PulsingMarker>
-                );
-              }
-
-              const icon = L.divIcon({
-                html: `
-                  <div style="
-                    background: ${badgeBg};
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 50%;
-                    border: 2px solid #ffffff;
-                    box-shadow: 0 0 6px ${badgeBg};
-                  "></div>
-                `,
-                className: 'heat-point-marker',
-                iconSize: [14, 14],
-                iconAnchor: [7, 7]
-              });
-
-              return (
-                <Marker key={loc.location_id || `${lat}-${lng}`} position={[lat, lng]} icon={icon}>
-                  {popupContent}
-                </Marker>
-              );
-            })}
+            {/* Location Markers with detailed traffic Popups (Memoized) */}
+            {showMarkers && rawLocations.map((loc) => (
+              <HeatMapMarkerItem key={loc.location_id || `${loc.latitude}-${loc.longitude}`} loc={loc} />
+            ))}
           </MapContainer>
+
         )}
         <MapVignette cardColor="#ffffff" strength="medium" />
 
@@ -437,4 +531,5 @@ const CongestionHeatMap = ({ refreshIntervalSec = 20 }) => {
   );
 };
 
-export default CongestionHeatMap;
+export default React.memo(CongestionHeatMap);
+

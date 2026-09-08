@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
@@ -19,11 +19,7 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
   const [error, setError] = useState('');
   const [activeChartTab, setActiveChartTab] = useState('all'); // 'all' | 'trend' | 'volume'
 
-  useEffect(() => {
-    fetchTrendData();
-  }, [timeframe, granularity]);
-
-  const fetchTrendData = async () => {
+  const fetchTrendData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -53,36 +49,43 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeframe, granularity]);
 
-  // Format trend data for LineChart
-  const formattedTrends = trends.map((item) => {
-    let timeStr = 'N/A';
-    if (item.time_bucket) {
-      const d = new Date(item.time_bucket);
-      if (granularity === 'weekly') {
-        timeStr = `Week of ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
-      } else if (granularity === 'daily') {
-        timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      } else {
-        timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit' });
+  useEffect(() => {
+    fetchTrendData();
+  }, [fetchTrendData]);
+
+  // Format trend data for LineChart (memoized)
+  const formattedTrends = useMemo(() => {
+    return trends.map((item) => {
+      let timeStr = 'N/A';
+      if (item.time_bucket) {
+        const d = new Date(item.time_bucket);
+        if (granularity === 'weekly') {
+          timeStr = `Week of ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+        } else if (granularity === 'daily') {
+          timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        } else {
+          timeStr = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit' });
+        }
       }
-    }
 
-    const avgSpeed = parseFloat(item.avg_speed || item.avg_speed_kmph || 0);
-    const avgVehicles = parseInt(item.avg_vehicle_count || 0, 10);
-    const density = item.avg_density !== undefined
-      ? parseFloat(item.avg_density)
-      : Math.max(5, Math.min(95, Math.round((1 - Math.min(avgSpeed, 60) / 60) * 100)));
+      const avgSpeed = parseFloat(item.avg_speed || item.avg_speed_kmph || 0);
+      const avgVehicles = parseInt(item.avg_vehicle_count || 0, 10);
+      const density = item.avg_density !== undefined
+        ? parseFloat(item.avg_density)
+        : Math.max(5, Math.min(95, Math.round((1 - Math.min(avgSpeed, 60) / 60) * 100)));
 
-    return {
-      time: timeStr,
-      speed: avgSpeed,
-      vehicles: avgVehicles,
-      density: density,
-      location: item.location_name || 'Network Average'
-    };
-  });
+      return {
+        time: timeStr,
+        speed: avgSpeed,
+        vehicles: avgVehicles,
+        density: density,
+        location: item.location_name || 'Network Average'
+      };
+    });
+  }, [trends, granularity]);
+
 
   return (
     <div style={{
@@ -194,10 +197,57 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
       </div>
 
       {loading && (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-          Loading trend charts...
+        <div style={{
+          padding: '24px',
+          background: '#f8fafc',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <style>{`
+            .chart-skeleton-shimmer::after {
+              content: "";
+              position: absolute;
+              top: 0; left: -100%; width: 100%; height: 100%;
+              background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+              animation: chart-shimmer 1.5s infinite;
+            }
+            @keyframes chart-shimmer {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(200%); }
+            }
+          `}</style>
+          <div className="chart-skeleton-shimmer" style={{ height: '20px', width: '35%', background: '#e2e8f0', borderRadius: '6px' }} />
+          <div className="chart-skeleton-shimmer" style={{
+            height: '240px',
+            width: '100%',
+            background: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justify: 'space-around',
+            padding: '16px 12px'
+          }}>
+            {[40, 65, 30, 85, 55, 70, 45, 90, 60, 75].map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  height: `${h}%`,
+                  width: '6%',
+                  background: '#cbd5e1',
+                  borderRadius: '4px 4px 0 0',
+                  opacity: 0.7
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
+
 
       {error && (
         <div style={{ padding: '12px 16px', background: '#fef2f2', color: '#991b1b', borderRadius: '8px', fontSize: '13px' }}>
@@ -324,4 +374,5 @@ const TrendChart = ({ initialTimeframe = '7d' }) => {
   );
 };
 
-export default TrendChart;
+export default React.memo(TrendChart);
+

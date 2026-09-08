@@ -34,7 +34,7 @@ const STRENGTH_STOPS = {
 };
 
 export default function MapVignette({
-  cardColor = "#ffffff",
+  cardColor = "var(--card-bg, #ffffff)",
   strength = "medium",
   corners = true,
 }) {

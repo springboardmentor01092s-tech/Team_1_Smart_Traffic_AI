@@ -58,7 +58,7 @@ function ensurePulseStylesInjected() {
       border-radius: 50%;
       transform: translate(-50%, -50%);
       background: var(--pm-color);
-      border: 2px solid #fff;
+      border: 2px solid var(--card-bg, #fff);
       box-shadow: 0 1px 3px rgba(0,0,0,0.35);
       z-index: 3;
     }

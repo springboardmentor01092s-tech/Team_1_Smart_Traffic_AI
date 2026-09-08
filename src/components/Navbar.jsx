@@ -2,9 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FlowBackground from './FlowBackground';
 import NavTabs from './NavTabs';
+import { useTheme } from '../context/ThemeContext';
 
 const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     localStorage.getItem('token') && localStorage.removeItem('token');
@@ -50,7 +52,7 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
           🚦
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px', color: '#ffffff' }}>
             TrafficVision <span style={{ color: '#60a5fa' }}>AI</span>
           </h1>
           <span style={{ fontSize: '11px', color: '#94a3b8' }}>Smart Prediction & Congestion Management</span>
@@ -58,7 +60,7 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
       </div>
 
       {/* Sliding Underline Navigation Tabs */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: '1 1 auto', maxWidth: '100%', minWidth: 0 }}>
         <NavTabs
           tabs={navItems}
           activeKey={activeTab}
@@ -67,8 +69,30 @@ const Navbar = ({ activeTab, setActiveTab, onManualTrigger }) => {
         />
       </div>
 
+
       {/* Action Buttons & Logout */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1 }}>
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle Theme"
+          style={{
+            padding: '7px 12px',
+            fontSize: '12px',
+            fontWeight: '600',
+            borderRadius: '6px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            background: 'rgba(255,255,255,0.1)',
+            color: '#ffffff',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px'
+          }}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+        </button>
+
         {onManualTrigger && (
           <button
             onClick={onManualTrigger}

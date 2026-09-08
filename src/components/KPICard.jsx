@@ -12,7 +12,7 @@ import React, { useEffect, useRef, useState } from "react";
  * Fully backwards compatible with existing title/label, trend/changePct,
  * sparklineData/trendPoints, and loading props.
  */
-export default function KPICard({
+export function KPICard({
   label,
   title,
   value = 0,
@@ -108,26 +108,48 @@ export default function KPICard({
   if (loading) {
     return (
       <div
+        className="kpi-card-skeleton"
         style={{
-          background: "#ffffff",
+          background: "var(--card-bg, #ffffff)",
           borderRadius: "14px",
           padding: "18px 20px",
           boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--card-border-color, #e2e8f0)",
           borderLeft: `4px solid ${accentColor}`,
           minHeight: "130px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          animation: "pulse 1.5s infinite ease-in-out",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div style={{ height: "14px", width: "60%", background: "#e2e8f0", borderRadius: "4px" }} />
-        <div style={{ height: "28px", width: "40%", background: "#cbd5e1", borderRadius: "6px", margin: "10px 0" }} />
-        <div style={{ height: "12px", width: "80%", background: "#f1f5f9", borderRadius: "4px" }} />
+        <style>{`
+          .kpi-card-skeleton::after {
+            content: "";
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+            animation: kpi-skeleton-shimmer 1.5s infinite;
+          }
+          @keyframes kpi-skeleton-shimmer {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ height: "12px", width: "55%", background: "var(--card-border-color, #e2e8f0)", borderRadius: "4px" }} />
+          <div style={{ height: "16px", width: "16px", borderRadius: "50%", background: "var(--card-border-color, #e2e8f0)" }} />
+        </div>
+        <div style={{ height: "30px", width: "45%", background: "var(--control-bg, #cbd5e1)", borderRadius: "6px", margin: "10px 0" }} />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ height: "12px", width: "35%", background: "var(--bg-color, #f1f5f9)", borderRadius: "4px" }} />
+          <div style={{ height: "12px", width: "40%", background: "var(--bg-color, #f1f5f9)", borderRadius: "4px" }} />
+        </div>
       </div>
     );
   }
+
 
   const pulseColor = pulse === "up" ? "#10b981" : pulse === "down" ? "#ef4444" : null;
   const isTrendGood = isHigherBetter ? cardChangePct >= 0 : cardChangePct <= 0;
@@ -143,7 +165,7 @@ export default function KPICard({
       <style>{`
         .kpi-card {
           position: relative;
-          background: #ffffff;
+          background: var(--card-bg, #ffffff);
           border-radius: var(--card-radius, 14px);
           padding: 18px 20px;
           border-left: 4px solid var(--accent);
@@ -177,7 +199,7 @@ export default function KPICard({
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
-          color: #64748b;
+          color: var(--text-secondary, #64748b);
           text-transform: uppercase;
         }
         .kpi-card__icon {
@@ -192,13 +214,13 @@ export default function KPICard({
         .kpi-card__value {
           font-size: 28px;
           font-weight: 800;
-          color: #0f172a;
+          color: var(--text-primary, #0f172a);
           font-variant-numeric: tabular-nums;
         }
         .kpi-card__unit {
           font-size: 13px;
           font-weight: 600;
-          color: #94a3b8;
+          color: var(--text-muted, #94a3b8);
         }
         .kpi-card__change {
           margin-top: 6px;
@@ -210,7 +232,7 @@ export default function KPICard({
         }
         .kpi-card__change--up { color: #059669; }
         .kpi-card__change--down { color: #dc2626; }
-        .kpi-card__change-label { color: #94a3b8; font-weight: 500; }
+        .kpi-card__change-label { color: var(--text-muted, #94a3b8); font-weight: 500; }
         .kpi-card__spark {
           position: absolute;
           right: 12px;
@@ -265,7 +287,8 @@ export default function KPICard({
   );
 }
 
-/* ------------------------------------------------------------------ */
+export default React.memo(KPICard);
+
 /* Demo harness — shows the card live-updating like your real dashboard */
 /* ------------------------------------------------------------------ */
 export function KPICardDemo() {

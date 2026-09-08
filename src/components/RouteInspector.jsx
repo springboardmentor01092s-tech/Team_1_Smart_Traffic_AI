@@ -13,14 +13,26 @@ const RouteInspector = () => {
     fetchRoutes();
   }, []);
 
+  const isValidRoute = (r) => {
+    if (!r || !r.route_id) return false;
+    if (Array.isArray(r.locations)) {
+      return r.locations.length >= 2;
+    }
+    return true;
+  };
+
   const fetchRoutes = async () => {
     try {
       const data = await getAllRoutes();
       const list = Array.isArray(data) ? data : [];
       setRoutes(list);
-      if (list.length > 0) {
-        setSelectedRouteId(list[0].route_id);
-        inspectRoute(list[0].route_id);
+
+      const validRoute = list.find(isValidRoute);
+      if (validRoute) {
+        setSelectedRouteId(validRoute.route_id);
+        inspectRoute(validRoute.route_id);
+      } else {
+        setSelectedRouteId('');
       }
     } catch (err) {
       console.error('Failed to fetch routes:', err);
@@ -91,22 +103,25 @@ const RouteInspector = () => {
   const selectedRouteObj = routes.find(r => r.route_id === selectedRouteId);
 
   return (
-    <div style={{ background: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <div style={{ background: '#ffffff', padding: 'clamp(12px, 3vw, 20px)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <h3 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>🛣️ Route Analysis & Travel Time Inspector</h3>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <label style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Select Corridor:</label>
           <select
             value={selectedRouteId}
             onChange={handleRouteSelect}
-            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '500' }}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '500', maxWidth: '100%' }}
           >
-            {routes.map((r) => (
-              <option key={r.route_id} value={r.route_id}>
-                {r.name || `Route ${r.route_id.substring(0, 8)}`}
-              </option>
-            ))}
+            {routes.map((r) => {
+              const valid = isValidRoute(r);
+              return (
+                <option key={r.route_id} value={r.route_id} disabled={!valid}>
+                  {r.name || `Route ${r.route_id.substring(0, 8)}`} {!valid ? ' (Insufficient Locations)' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -120,7 +135,7 @@ const RouteInspector = () => {
       )}
 
       {!loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
           {/* Analysis Summary Card */}
           <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
             <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#374151' }}>Route Congestion Analysis</h4>
@@ -155,7 +170,8 @@ const RouteInspector = () => {
           </div>
 
           {/* Segment Travel Times Breakdown */}
-          <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
+          <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '10px', border: '1px solid #e5e7eb', minWidth: 0 }}>
+
             <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#374151' }}>Segment Travel Time Breakdown</h4>
             {travelTimeData && travelTimeData.segments && travelTimeData.segments.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
