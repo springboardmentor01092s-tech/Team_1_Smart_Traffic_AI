@@ -122,12 +122,12 @@ export function FlowBackgroundDemo() {
         style={{
           position: "relative",
           overflow: "hidden",
-          background: "#0f172a",
+          background: "var(--header-bg, #0f172a)",
           padding: "18px 28px",
         }}
       >
         <FlowBackground accentColor="#3b82f6" density={7} speed={12} />
-        <div style={{ position: "relative", zIndex: 1, color: "#fff", fontWeight: 700 }}>
+        <div style={{ position: "relative", zIndex: 1, color: "var(--text-primary, #fff)", fontWeight: 700 }}>
           TrafficVision AI — Navbar
         </div>
       </div>
@@ -137,8 +137,8 @@ export function FlowBackgroundDemo() {
         style={{
           position: "relative",
           overflow: "hidden",
-          background: "#fff7ed",
-          border: "1px solid #fed7aa",
+          background: "var(--card-bg, #fff7ed)",
+          border: "1px solid var(--card-border-color, #fed7aa)",
           borderRadius: "14px",
           padding: "20px 24px",
           margin: "16px",
@@ -146,10 +146,10 @@ export function FlowBackgroundDemo() {
       >
         <FlowBackground accentColor="#f97316" density={5} speed={16} opacity={0.22} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: "18px", color: "#7c2d12" }}>
+          <div style={{ fontWeight: 800, fontSize: "18px", color: "var(--text-primary, #7c2d12)" }}>
             🔥 Dynamic Congestion Heat Map
           </div>
-          <div style={{ fontSize: "13px", color: "#9a3412", marginTop: "4px" }}>
+          <div style={{ fontSize: "13px", color: "var(--text-secondary, #9a3412)", marginTop: "4px" }}>
             Real-time heat intensity derived from speed ratio & vehicle count.
           </div>
         </div>
@@ -157,3 +157,4 @@ export function FlowBackgroundDemo() {
     </div>
   );
 }
+

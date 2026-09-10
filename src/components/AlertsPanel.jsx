@@ -26,10 +26,48 @@ const AlertsPanel = () => {
 
   useEffect(() => {
     fetchAlerts();
-    // Auto-refresh alerts every 20 seconds to match data refresh cycle
-    const interval = setInterval(fetchAlerts, 20000);
-    return () => clearInterval(interval);
+
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (!intervalId) {
+        intervalId = setInterval(() => {
+          if (!document.hidden) {
+            fetchAlerts();
+          }
+        }, 30000);
+      }
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    if (!document.hidden) {
+      startPolling();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchAlerts();
+        stopPolling();
+        startPolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [filterStatus]);
+
 
   const handleStatusUpdate = async (alertId, newStatus) => {
     try {

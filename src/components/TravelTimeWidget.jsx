@@ -23,6 +23,14 @@ const TravelTimeWidget = () => {
     fetchRoutes();
   }, []);
 
+  const isValidRoute = (r) => {
+    if (!r || !r.route_id) return false;
+    if (Array.isArray(r.locations)) {
+      return r.locations.length >= 2;
+    }
+    return true;
+  };
+
   const fetchRoutes = async () => {
     setLoadingRoutes(true);
     setError('');
@@ -31,9 +39,13 @@ const TravelTimeWidget = () => {
       const list = Array.isArray(data) ? data : [];
       setRoutes(list);
 
-      if (list.length > 0) {
-        setSelectedRouteId(list[0].route_id);
-        fetchTravelTime(list[0].route_id);
+      const validRoute = list.find(isValidRoute);
+      if (validRoute) {
+        setSelectedRouteId(validRoute.route_id);
+        fetchTravelTime(validRoute.route_id);
+      } else {
+        setSelectedRouteId('');
+        setTravelTimeData(null);
       }
     } catch (err) {
       console.error('Error fetching routes:', err);
@@ -125,11 +137,14 @@ const TravelTimeWidget = () => {
                 minWidth: '220px'
               }}
             >
-              {routes.map((r) => (
-                <option key={r.route_id} value={r.route_id}>
-                  🛣️ {r.name || r.route_name}
-                </option>
-              ))}
+              {routes.map((r) => {
+                const valid = isValidRoute(r);
+                return (
+                  <option key={r.route_id} value={r.route_id} disabled={!valid}>
+                    🛣️ {r.name || r.route_name} {!valid ? ' (Insufficient Locations)' : ''}
+                  </option>
+                );
+              })}
             </select>
           )}
         </div>

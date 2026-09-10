@@ -111,18 +111,20 @@ const MapView = ({ locations = [], onRefresh }) => {
         zIndex: 1000,
         background: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(8px)',
-        padding: '10px 14px',
+        padding: '6px 12px',
         borderRadius: '8px',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        flexWrap: 'wrap',
+        gap: '6px 10px',
+        maxWidth: 'calc(100% - 70px)',
         boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
       }}>
-        <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Filter Congestion:</span>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Filter Congestion:</span>
         <select
           value={filterLevel}
           onChange={(e) => setFilterLevel(e.target.value)}
-          style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }}
+          style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px', background: '#ffffff', maxWidth: '100%' }}
         >
           <option value="all">All Levels ({locations.length})</option>
           <option value="low">🟢 Low</option>
@@ -131,6 +133,7 @@ const MapView = ({ locations = [], onRefresh }) => {
           <option value="severe">🔴 Severe</option>
         </select>
       </div>
+
 
       <MapContainer
         center={defaultCenter}
@@ -248,4 +251,5 @@ const MapView = ({ locations = [], onRefresh }) => {
   );
 };
 
-export default MapView;
+export default React.memo(MapView);
+
