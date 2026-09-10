@@ -14,10 +14,10 @@ async function initDatabase() {
     };
   } else {
     clientConfig = {
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '1234',
-      host: process.env.DB_HOST || 'localhost',
-      port: process.env.DB_PORT || 5432,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
       database: 'postgres'
     };
   }
@@ -28,7 +28,7 @@ async function initDatabase() {
     const rootClient = new Client(clientConfig);
     await rootClient.connect();
 
-    const dbName = process.env.DB_NAME || 'trafficvision_ai';
+    const dbName = process.env.DB_NAME;
     const res = await rootClient.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
     if (res.rows.length === 0) {
       console.log(`Creating database ${dbName}...`);
