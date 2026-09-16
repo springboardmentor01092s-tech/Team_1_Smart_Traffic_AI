@@ -1,4 +1,8 @@
 node_modules/
+dist/
 .env
-*.csv
+bangalore_traffic_dataset.csv
+processed_traffic_data.csv
+test_traffic_data.csv
+train_traffic_data.csv
 reports/

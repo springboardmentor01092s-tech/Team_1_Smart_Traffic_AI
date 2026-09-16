@@ -1,0 +1,6 @@
+node_modules
+.env
+.git
+*.log
+test_*.js
+run_full_suite.js
